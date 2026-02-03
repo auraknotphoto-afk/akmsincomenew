@@ -213,9 +213,30 @@ export const db = {
   },
 
   async updateJob(id: string, updates: Partial<Job>): Promise<Job> {
-    // Use Supabase if configured
+    console.log('[DB] updateJob called for id:', id);
+    
+    // Always update localStorage first
+    const jobs = getLocalJobs();
+    const index = jobs.findIndex(j => j.id === id);
+    let updatedJob: Job;
+    
+    if (index !== -1) {
+      jobs[index] = { ...jobs[index], ...updates, updated_at: new Date().toISOString() };
+      saveLocalJobs(jobs);
+      updatedJob = jobs[index];
+      console.log('[DB] Updated in localStorage');
+    } else {
+      // Job not in localStorage, create it there
+      updatedJob = { ...updates, id, updated_at: new Date().toISOString() } as Job;
+      jobs.push(updatedJob);
+      saveLocalJobs(jobs);
+      console.log('[DB] Added to localStorage (was not present)');
+    }
+    
+    // Also update in Supabase if configured
     if (supabase) {
       try {
+        console.log('[DB] Also updating in Supabase...');
         const { data, error } = await supabase
           .from('jobs')
           .update({ ...updates, updated_at: new Date().toISOString() })
@@ -224,50 +245,46 @@ export const db = {
           .single();
         
         if (error) {
-          console.warn('Supabase updateJob error, falling back to localStorage:', error.message);
-          // Fall through to localStorage
+          console.error('[DB] Supabase update error:', error.message);
         } else {
+          console.log('[DB] Also updated in Supabase successfully');
           return data as Job;
         }
       } catch (e) {
-        console.warn('Supabase connection error, using localStorage');
+        console.error('[DB] Supabase connection error during update:', e);
       }
     }
     
-    // Fallback to localStorage
-    const jobs = getLocalJobs();
-    const index = jobs.findIndex(j => j.id === id);
-    if (index === -1) throw new Error('Job not found');
-    
-    jobs[index] = { ...jobs[index], ...updates, updated_at: new Date().toISOString() };
-    saveLocalJobs(jobs);
-    return jobs[index];
+    return updatedJob;
   },
 
   async deleteJob(id: string): Promise<void> {
-    // Use Supabase if configured
+    console.log('[DB] deleteJob called for id:', id);
+    
+    // Always delete from localStorage first
+    const jobs = getLocalJobs();
+    const filtered = jobs.filter(j => j.id !== id);
+    saveLocalJobs(filtered);
+    console.log('[DB] Deleted from localStorage, remaining jobs:', filtered.length);
+    
+    // Also delete from Supabase if configured
     if (supabase) {
       try {
+        console.log('[DB] Also deleting from Supabase...');
         const { error } = await supabase
           .from('jobs')
           .delete()
           .eq('id', id);
         
         if (error) {
-          console.warn('Supabase deleteJob error, falling back to localStorage:', error.message);
-          // Fall through to localStorage
+          console.error('[DB] Supabase delete error:', error.message);
         } else {
-          return;
+          console.log('[DB] Also deleted from Supabase successfully');
         }
       } catch (e) {
-        console.warn('Supabase connection error, using localStorage');
+        console.error('[DB] Supabase connection error during delete:', e);
       }
     }
-    
-    // Fallback to localStorage
-    const jobs = getLocalJobs();
-    const filtered = jobs.filter(j => j.id !== id);
-    saveLocalJobs(filtered);
   },
 
   // Dashboard summary
