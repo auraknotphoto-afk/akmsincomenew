@@ -233,29 +233,29 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Header */}
-      <div className="border-b border-slate-700/50 backdrop-blur-sm bg-slate-900/50">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+      <div className="border-b border-slate-700/50 backdrop-blur-sm bg-slate-900/50 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+          <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-white">Dashboard</h1>
-              <p className="text-slate-400 text-sm mt-1">Welcome back to Aura Knot Photography</p>
+              <h1 className="text-xl sm:text-3xl font-bold text-white">Dashboard</h1>
+              <p className="text-slate-400 text-xs sm:text-sm mt-0.5 sm:mt-1 hidden sm:block">Welcome back to Aura Knot Photography</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               {db.isDemoMode() && (
-                <span className="px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-xs font-medium">
+                <span className="px-2 sm:px-3 py-1 rounded-full bg-amber-500/20 text-amber-400 text-[10px] sm:text-xs font-medium hidden sm:inline-flex">
                   Demo Mode
                 </span>
               )}
               <button
                 onClick={() => router.push('/settings')}
-                className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-colors duration-200"
+                className="p-2 sm:p-2.5 rounded-xl bg-slate-700/80 hover:bg-slate-600 text-white transition-all active:scale-95"
                 title="Settings"
               >
                 <Settings className="w-5 h-5" />
               </button>
               <button
                 onClick={logout}
-                className="p-2 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-colors duration-200"
+                className="p-2 sm:p-2.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 transition-all active:scale-95"
                 title="Logout"
               >
                 <LogOut className="w-5 h-5" />
@@ -266,29 +266,30 @@ export default function DashboardPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         {/* Time Period Selector */}
-        <div className="mb-8 bg-slate-800/50 backdrop-blur border border-slate-700/50 rounded-2xl p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <Calendar className="w-5 h-5 text-indigo-400" />
-            <h2 className="text-lg font-semibold text-white">Time Period</h2>
-            <span className="px-3 py-1 rounded-full bg-indigo-500/20 text-indigo-400 text-sm font-medium">
+        <div className="mb-4 sm:mb-8 bg-slate-800/50 backdrop-blur border border-slate-700/50 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+          <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+            <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-400" />
+            <h2 className="text-sm sm:text-lg font-semibold text-white">Time Period</h2>
+            <span className="px-2 sm:px-3 py-0.5 sm:py-1 rounded-full bg-indigo-500/20 text-indigo-400 text-xs sm:text-sm font-medium">
               {periodLabel}
             </span>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
             {periods.map((period) => (
               <button
                 key={period.value}
                 onClick={() => setSelectedPeriod(period.value)}
-                className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                className={`px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all active:scale-95 ${
                   selectedPeriod === period.value
                     ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25'
                     : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
                 }`}
               >
-                <span className="mr-2">{period.icon}</span>
-                {period.label}
+                <span className="mr-1 sm:mr-2">{period.icon}</span>
+                <span className="hidden xs:inline">{period.label}</span>
+                <span className="xs:hidden">{period.label.split(' ')[0]}</span>
               </button>
             ))}
           </div>
@@ -303,26 +304,26 @@ export default function DashboardPage() {
         ) : (
           <>
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-4 sm:mb-8">
               {stats.map((stat, index) => {
                 const Icon = stat.icon;
                 return (
                   <div
                     key={index}
-                    className="group relative bg-slate-800/50 backdrop-blur border border-slate-700/50 rounded-xl p-6 hover:border-slate-600/80 transition-all duration-300"
+                    className="group relative bg-slate-800/50 backdrop-blur border border-slate-700/50 rounded-xl p-3 sm:p-6 hover:border-slate-600/80 transition-all duration-300 active:scale-98"
                   >
                     <div className="absolute inset-0 bg-gradient-to-br from-slate-700/0 to-slate-700/0 group-hover:from-slate-700/5 group-hover:to-slate-700/10 rounded-xl transition-all duration-300"></div>
                     
                     <div className="relative z-10">
-                      <div className="flex items-center justify-between mb-4">
-                        <p className="text-slate-400 text-sm font-medium">{stat.label}</p>
-                        <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-                          <Icon className={`w-4 h-4 ${stat.textColor}`} />
+                      <div className="flex items-center justify-between mb-2 sm:mb-4">
+                        <p className="text-slate-400 text-[10px] sm:text-sm font-medium">{stat.label}</p>
+                        <div className={`p-1.5 sm:p-2 rounded-lg ${stat.bgColor}`}>
+                          <Icon className={`w-3 h-3 sm:w-4 sm:h-4 ${stat.textColor}`} />
                         </div>
                       </div>
                       
-                      <p className="text-3xl font-bold text-white mb-2">{stat.value}</p>
-                      <p className="text-xs text-slate-500">{periodLabel}</p>
+                      <p className="text-lg sm:text-3xl font-bold text-white mb-0.5 sm:mb-2">{stat.value}</p>
+                      <p className="text-[10px] sm:text-xs text-slate-500 hidden sm:block">{periodLabel}</p>
                     </div>
                   </div>
                 );
@@ -330,57 +331,57 @@ export default function DashboardPage() {
             </div>
 
             {/* Category Cards */}
-            <div className="mb-8">
-              <div className="flex items-center justify-between mb-6">
+            <div className="mb-4 sm:mb-8">
+              <div className="flex items-center justify-between mb-3 sm:mb-6">
                 <div>
-                  <h2 className="text-xl font-bold text-white">Income Categories</h2>
-                  <p className="text-slate-400 text-sm mt-1">Breakdown by category for {periodLabel.toLowerCase()}</p>
+                  <h2 className="text-base sm:text-xl font-bold text-white">Income Categories</h2>
+                  <p className="text-slate-400 text-xs sm:text-sm mt-0.5 sm:mt-1 hidden sm:block">Breakdown by category for {periodLabel.toLowerCase()}</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-6">
                 {categories.map((category, index) => (
                   <div
                     key={index}
-                    className="group relative bg-slate-800/50 backdrop-blur border border-slate-700/50 rounded-xl overflow-hidden hover:border-slate-600/80 transition-all duration-300"
+                    className="group relative bg-slate-800/50 backdrop-blur border border-slate-700/50 rounded-xl overflow-hidden hover:border-slate-600/80 transition-all duration-300 active:scale-98"
                   >
                     <div className={`absolute inset-0 bg-gradient-to-br ${category.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}></div>
                     
-                    <div className="relative z-10 p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                          <span className="text-3xl">{category.icon}</span>
+                    <div className="relative z-10 p-4 sm:p-6">
+                      <div className="flex items-center justify-between mb-3 sm:mb-4">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <span className="text-xl sm:text-3xl">{category.icon}</span>
                           <div>
-                            <h3 className="text-lg font-bold text-white">{category.name}</h3>
-                            <p className="text-xs text-slate-400">{category.subtitle}</p>
+                            <h3 className="text-sm sm:text-lg font-bold text-white">{category.name}</h3>
+                            <p className="text-[10px] sm:text-xs text-slate-400">{category.subtitle}</p>
                           </div>
                         </div>
                       </div>
 
-                      <div className="space-y-4 mb-6">
-                        <div className="bg-slate-900/50 rounded-lg p-4">
-                          <p className="text-slate-400 text-sm mb-1">Total Income</p>
-                          <p className="text-2xl font-bold text-white">{category.income}</p>
+                      <div className="space-y-2 sm:space-y-4 mb-3 sm:mb-6">
+                        <div className="bg-slate-900/50 rounded-lg p-2.5 sm:p-4">
+                          <p className="text-slate-400 text-[10px] sm:text-sm mb-0.5 sm:mb-1">Total Income</p>
+                          <p className="text-lg sm:text-2xl font-bold text-white">{category.income}</p>
                         </div>
                         
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="bg-slate-900/50 rounded-lg p-3">
-                            <p className="text-slate-400 text-xs mb-1">Pending</p>
-                            <p className="text-lg font-bold text-amber-400">{category.pending}</p>
+                        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                          <div className="bg-slate-900/50 rounded-lg p-2 sm:p-3">
+                            <p className="text-slate-400 text-[10px] sm:text-xs mb-0.5 sm:mb-1">Pending</p>
+                            <p className="text-sm sm:text-lg font-bold text-amber-400">{category.pending}</p>
                           </div>
-                          <div className="bg-slate-900/50 rounded-lg p-3">
-                            <p className="text-slate-400 text-xs mb-1">Jobs</p>
-                            <p className="text-lg font-bold text-white">{category.jobs}</p>
+                          <div className="bg-slate-900/50 rounded-lg p-2 sm:p-3">
+                            <p className="text-slate-400 text-[10px] sm:text-xs mb-0.5 sm:mb-1">Jobs</p>
+                            <p className="text-sm sm:text-lg font-bold text-white">{category.jobs}</p>
                           </div>
                         </div>
                       </div>
 
                       <button
                         onClick={() => router.push(category.route)}
-                        className={`w-full py-3 px-4 rounded-lg bg-gradient-to-r ${category.gradient} text-white font-semibold text-sm hover:shadow-lg hover:shadow-slate-900/50 transition-all duration-200 flex items-center justify-center gap-2 group/btn`}
+                        className={`w-full py-2.5 sm:py-3 px-3 sm:px-4 rounded-lg bg-gradient-to-r ${category.gradient} text-white font-semibold text-xs sm:text-sm hover:shadow-lg hover:shadow-slate-900/50 transition-all duration-200 flex items-center justify-center gap-2 group/btn active:scale-95`}
                       >
                         View Details
-                        <ArrowRight className="w-4 h-4 group-hover/btn:translate-x-0.5 transition-transform" />
+                        <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 group-hover/btn:translate-x-0.5 transition-transform" />
                       </button>
                     </div>
                   </div>
@@ -389,41 +390,74 @@ export default function DashboardPage() {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
               <button
                 onClick={() => router.push('/jobs/editing')}
-                className="group relative bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-xl p-8 text-white font-semibold text-lg hover:shadow-2xl hover:shadow-emerald-900/50 transition-all duration-300 overflow-hidden"
+                className="group relative bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-xl p-5 sm:p-8 text-white font-semibold text-sm sm:text-lg hover:shadow-2xl hover:shadow-emerald-900/50 transition-all duration-300 overflow-hidden active:scale-95"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 <div className="relative z-10 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Plus className="w-6 h-6" />
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <Plus className="w-5 h-5 sm:w-6 sm:h-6" />
                     <span>Add New Job</span>
                   </div>
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
                 </div>
               </button>
 
               <button
                 onClick={() => router.push('/reports')}
-                className="group relative bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-xl p-8 text-white font-semibold text-lg hover:shadow-2xl hover:shadow-indigo-900/50 transition-all duration-300 overflow-hidden"
+                className="group relative bg-gradient-to-br from-indigo-600 to-indigo-700 rounded-xl p-5 sm:p-8 text-white font-semibold text-sm sm:text-lg hover:shadow-2xl hover:shadow-indigo-900/50 transition-all duration-300 overflow-hidden active:scale-95"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-indigo-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 <div className="relative z-10 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <BarChart3 className="w-6 h-6" />
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6" />
                     <span>View Reports</span>
                   </div>
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
                 </div>
               </button>
             </div>
 
             {/* Recent Jobs */}
             {jobs.length > 0 && (
-              <div className="mt-8">
-                <h2 className="text-xl font-bold text-white mb-4">Recent Jobs ({periodLabel})</h2>
-                <div className="bg-slate-800/50 backdrop-blur border border-slate-700/50 rounded-xl overflow-hidden">
+              <div className="mt-4 sm:mt-8">
+                <h2 className="text-base sm:text-xl font-bold text-white mb-3 sm:mb-4">Recent Jobs ({periodLabel})</h2>
+                
+                {/* Mobile Card View */}
+                <div className="sm:hidden space-y-3">
+                  {jobs.slice(0, 5).map((job) => (
+                    <div key={job.id} className="bg-slate-800/50 backdrop-blur border border-slate-700/50 rounded-xl p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <p className="text-white font-semibold text-sm">{job.customer_name}</p>
+                          <p className="text-slate-400 text-xs">{new Date(job.start_date).toLocaleDateString('en-IN')}</p>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                          job.category === 'EDITING' ? 'bg-purple-500/20 text-purple-400' :
+                          job.category === 'EXPOSING' ? 'bg-cyan-500/20 text-cyan-400' :
+                          'bg-orange-500/20 text-orange-400'
+                        }`}>
+                          {job.category}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <p className="text-white font-bold text-base">₹{job.total_price.toLocaleString('en-IN')}</p>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                          job.payment_status === 'COMPLETED' ? 'bg-emerald-500/20 text-emerald-400' :
+                          job.payment_status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' :
+                          'bg-red-500/20 text-red-400'
+                        }`}>
+                          {job.payment_status}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                {/* Desktop Table View */}
+                <div className="hidden sm:block bg-slate-800/50 backdrop-blur border border-slate-700/50 rounded-xl overflow-hidden">
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead className="bg-slate-700/30">

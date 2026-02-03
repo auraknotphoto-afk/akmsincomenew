@@ -351,39 +351,39 @@ export default function EditingPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Header */}
-      <div className="border-b border-white/10 backdrop-blur-sm bg-black/20">
-        <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="border-b border-white/10 backdrop-blur-sm bg-black/20 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button onClick={() => router.back()} className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <button onClick={() => router.back()} className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors active:scale-95">
                 <ArrowLeft className="w-5 h-5" />
               </button>
               <div>
-                <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-                  <span className="text-3xl">✨</span> Editing Jobs
+                <h1 className="text-lg sm:text-2xl font-bold text-white flex items-center gap-2 sm:gap-3">
+                  <span className="text-xl sm:text-3xl">✨</span> Editing Jobs
                 </h1>
-                <p className="text-purple-300 text-sm mt-1">Post-production & video editing</p>
+                <p className="text-purple-300 text-xs sm:text-sm mt-0.5 sm:mt-1 hidden sm:block">Post-production & video editing</p>
               </div>
             </div>
-            <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold hover:shadow-lg hover:shadow-purple-500/25 transition-all">
-              <Plus className="w-5 h-5" /> Add Job
+            <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold text-sm sm:text-base hover:shadow-lg hover:shadow-purple-500/25 transition-all active:scale-95">
+              <Plus className="w-4 h-4 sm:w-5 sm:h-5" /> <span className="hidden xs:inline">Add</span> Job
             </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         {/* Form */}
         {showForm && (
-          <div className="mb-8 bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6">
-            <h2 className="text-xl font-bold text-white mb-6">{editingJob ? 'Edit Editing Job' : 'New Editing Job'}</h2>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="mb-4 sm:mb-8 bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+            <h2 className="text-base sm:text-xl font-bold text-white mb-4 sm:mb-6">{editingJob ? 'Edit Editing Job' : 'New Editing Job'}</h2>
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {/* Customer Name with Autofill */}
                 <div className="relative">
-                  <label className="block text-sm font-medium text-purple-300 mb-2">Customer Name *</label>
+                  <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Customer Name *</label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-400" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
                     <input 
                       ref={customerInputRef}
                       type="text" 
@@ -392,7 +392,7 @@ export default function EditingPage() {
                       onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })} 
                       onFocus={() => setShowCustomerSuggestions(true)}
                       onBlur={() => setTimeout(() => setShowCustomerSuggestions(false), 200)}
-                      className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500" 
+                      className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation" 
                       placeholder="Enter customer name"
                       autoComplete="off"
                     />
@@ -404,11 +404,11 @@ export default function EditingPage() {
                           key={idx}
                           type="button"
                           onClick={() => selectCustomer(customer)}
-                          className="w-full px-4 py-2 text-left text-white hover:bg-purple-600/30 flex items-center gap-2"
+                          className="w-full px-3 sm:px-4 py-2.5 text-left text-white text-sm hover:bg-purple-600/30 flex items-center gap-2"
                         >
-                          <User className="w-4 h-4 text-purple-400" />
-                          <span>{customer.name}</span>
-                          {customer.phone && <span className="text-purple-300 text-sm ml-auto">{customer.phone}</span>}
+                          <User className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                          <span className="truncate">{customer.name}</span>
+                          {customer.phone && <span className="text-purple-300 text-xs ml-auto flex-shrink-0">{customer.phone}</span>}
                         </button>
                       ))}
                     </div>
@@ -417,9 +417,9 @@ export default function EditingPage() {
 
                 {/* Phone Number with Autofill */}
                 <div className="relative">
-                  <label className="block text-sm font-medium text-purple-300 mb-2">Mobile Number</label>
+                  <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Mobile Number</label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-400" />
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
                     <input 
                       ref={phoneInputRef}
                       type="tel" 
@@ -427,7 +427,7 @@ export default function EditingPage() {
                       onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })} 
                       onFocus={() => setShowPhoneSuggestions(true)}
                       onBlur={() => setTimeout(() => setShowPhoneSuggestions(false), 200)}
-                      className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500" 
+                      className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation" 
                       placeholder="9876543210"
                       autoComplete="off"
                     />
@@ -439,11 +439,11 @@ export default function EditingPage() {
                           key={idx}
                           type="button"
                           onClick={() => selectCustomer(customer)}
-                          className="w-full px-4 py-2 text-left text-white hover:bg-purple-600/30 flex items-center gap-2"
+                          className="w-full px-3 sm:px-4 py-2.5 text-left text-white text-sm hover:bg-purple-600/30 flex items-center gap-2"
                         >
-                          <Phone className="w-4 h-4 text-purple-400" />
+                          <Phone className="w-4 h-4 text-purple-400 flex-shrink-0" />
                           <span>{customer.phone}</span>
-                          <span className="text-purple-300 text-sm ml-auto">{customer.name}</span>
+                          <span className="text-purple-300 text-xs ml-auto truncate">{customer.name}</span>
                         </button>
                       ))}
                     </div>
@@ -452,14 +452,14 @@ export default function EditingPage() {
 
                 {/* Client Name */}
                 <div>
-                  <label className="block text-sm font-medium text-purple-300 mb-2">Client Name</label>
+                  <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Client Name</label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-400" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
                     <input 
                       type="text" 
                       value={formData.client_name} 
                       onChange={(e) => setFormData({ ...formData, client_name: e.target.value })} 
-                      className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500" 
+                      className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation" 
                       placeholder="Enter client name"
                     />
                   </div>
@@ -467,14 +467,14 @@ export default function EditingPage() {
 
                 {/* Studio Name */}
                 <div>
-                  <label className="block text-sm font-medium text-purple-300 mb-2">Studio Name</label>
+                  <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Studio Name</label>
                   <div className="relative">
-                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-400" />
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
                     <input 
                       type="text" 
                       value={formData.studio_name} 
                       onChange={(e) => setFormData({ ...formData, studio_name: e.target.value })} 
-                      className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500" 
+                      className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation" 
                       placeholder="Enter studio name"
                     />
                   </div>
@@ -482,12 +482,12 @@ export default function EditingPage() {
 
                 {/* Event Type Dropdown */}
                 <div>
-                  <label className="block text-sm font-medium text-purple-300 mb-2">Event Type</label>
+                  <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Event Type</label>
                   {!showCustomEventInput ? (
                     <select 
                       value={formData.event_type} 
                       onChange={(e) => handleEventTypeChange(e.target.value)} 
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full px-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation"
                     >
                       <option value="" className="bg-slate-800">Select Event</option>
                       {EVENT_TYPES.map(type => (
@@ -500,13 +500,13 @@ export default function EditingPage() {
                         type="text" 
                         value={customEventType} 
                         onChange={(e) => setCustomEventType(e.target.value)} 
-                        className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500" 
+                        className="flex-1 px-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation" 
                         placeholder="Enter event type"
                       />
                       <button 
                         type="button" 
                         onClick={() => { setShowCustomEventInput(false); setCustomEventType(''); }}
-                        className="px-3 py-2 bg-white/10 rounded-xl text-white hover:bg-white/20"
+                        className="px-3 py-2 bg-white/10 rounded-xl text-white hover:bg-white/20 active:scale-95"
                       >
                         ✕
                       </button>
@@ -515,29 +515,29 @@ export default function EditingPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-purple-300 mb-2">Editing Start Date *</label>
+                  <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Editing Start Date *</label>
                   <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-400" />
-                    <input type="date" required value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
+                    <input type="date" required value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-purple-300 mb-2">Editing End Date</label>
+                  <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Editing End Date</label>
                   <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-400" />
-                    <input type="date" value={formData.end_date} onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
+                    <input type="date" value={formData.end_date} onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-purple-300 mb-2">Camera Type</label>
+                  <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Camera Type</label>
                   <div className="relative">
-                    <Camera className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-400" />
+                    <Camera className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
                     <select 
                       value={formData.camera_type} 
                       onChange={(e) => setFormData({ ...formData, camera_type: e.target.value })} 
-                      className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation"
                     >
                       <option value="" className="bg-slate-800">Select Camera</option>
                       {CAMERA_OPTIONS.map(type => (
@@ -548,19 +548,19 @@ export default function EditingPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-purple-300 mb-2">Total Duration</label>
+                  <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Total Duration</label>
                   <div className="flex gap-2 items-center">
                     <div className="relative flex-1">
-                      <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-400" />
+                      <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
                       <input 
                         type="number" 
                         min="0" 
                         value={durationHours} 
                         onChange={(e) => setDurationHours(parseInt(e.target.value) || 0)} 
-                        className="w-full pl-11 pr-2 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500" 
+                        className="w-full pl-10 sm:pl-11 pr-8 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation" 
                         placeholder="0" 
                       />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-300 text-sm">hrs</span>
+                      <span className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 text-purple-300 text-xs sm:text-sm">hrs</span>
                     </div>
                     <span className="text-purple-300">:</span>
                     <div className="relative flex-1">
@@ -570,54 +570,54 @@ export default function EditingPage() {
                         max="59" 
                         value={durationMinutes} 
                         onChange={(e) => setDurationMinutes(Math.min(59, parseInt(e.target.value) || 0))} 
-                        className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500" 
+                        className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation" 
                         placeholder="0" 
                       />
-                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-purple-300 text-sm">min</span>
+                      <span className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 text-purple-300 text-xs sm:text-sm">min</span>
                     </div>
                   </div>
                   {formData.duration_hours > 0 && (
-                    <p className="text-xs text-purple-400 mt-1">Total: {formData.duration_hours.toFixed(2)} hours</p>
+                    <p className="text-[10px] sm:text-xs text-purple-400 mt-1">Total: {formData.duration_hours.toFixed(2)} hours</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-purple-300 mb-2">Rate per Hour (INR)</label>
+                  <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Rate per Hour (INR)</label>
                   <div className="relative">
-                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-400" />
-                    <input type="number" min="0" value={formData.rate_per_hour} onChange={(e) => setFormData({ ...formData, rate_per_hour: parseFloat(e.target.value) || 0 })} className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="0" />
+                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
+                    <input type="number" min="0" value={formData.rate_per_hour} onChange={(e) => setFormData({ ...formData, rate_per_hour: parseFloat(e.target.value) || 0 })} className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation" placeholder="0" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-purple-300 mb-2">Total Price (INR) *</label>
+                  <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Total Price (INR) *</label>
                   <div className="relative">
-                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-400" />
-                    <input type="number" required min="0" value={formData.total_price} onChange={(e) => setFormData({ ...formData, total_price: parseFloat(e.target.value) || 0 })} className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="0" />
+                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
+                    <input type="number" required min="0" value={formData.total_price} onChange={(e) => setFormData({ ...formData, total_price: parseFloat(e.target.value) || 0 })} className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation" placeholder="0" />
                   </div>
                   {formData.duration_hours > 0 && formData.rate_per_hour > 0 && (
-                    <p className="text-xs text-purple-400 mt-1">Calculated: {formData.duration_hours} hrs × Rs.{formData.rate_per_hour} = Rs.{(formData.duration_hours * formData.rate_per_hour).toLocaleString('en-IN')}</p>
+                    <p className="text-[10px] sm:text-xs text-purple-400 mt-1">Calculated: {formData.duration_hours} hrs × Rs.{formData.rate_per_hour} = Rs.{(formData.duration_hours * formData.rate_per_hour).toLocaleString('en-IN')}</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-purple-300 mb-2">Amount Paid (INR)</label>
+                  <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Amount Paid (INR)</label>
                   <div className="relative">
-                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-400" />
-                    <input type="number" min="0" value={formData.amount_paid} onChange={(e) => setFormData({ ...formData, amount_paid: parseFloat(e.target.value) || 0 })} className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="0" />
+                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
+                    <input type="number" min="0" value={formData.amount_paid} onChange={(e) => setFormData({ ...formData, amount_paid: parseFloat(e.target.value) || 0 })} className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation" placeholder="0" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-purple-300 mb-2">Balance (INR)</label>
-                  <div className={`px-4 py-3 rounded-xl font-bold text-lg ${balance > 0 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                  <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Balance (INR)</label>
+                  <div className={`px-4 py-2.5 sm:py-3 rounded-xl font-bold text-base sm:text-lg ${balance > 0 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
                     ₹{balance.toLocaleString('en-IN')}
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-purple-300 mb-2">Job Status</label>
-                  <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value as any })} className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                  <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Job Status</label>
+                  <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value as any })} className="w-full px-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation">
                     <option value="PENDING" className="bg-slate-800">Yet to Start</option>
                     <option value="IN_PROGRESS" className="bg-slate-800">In Progress</option>
                     <option value="COMPLETED" className="bg-slate-800">Completed</option>
@@ -625,8 +625,8 @@ export default function EditingPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-purple-300 mb-2">Payment Status</label>
-                  <select value={formData.payment_status} onChange={(e) => setFormData({ ...formData, payment_status: e.target.value as any })} className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500">
+                  <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Payment Status</label>
+                  <select value={formData.payment_status} onChange={(e) => setFormData({ ...formData, payment_status: e.target.value as any })} className="w-full px-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation">
                     <option value="PENDING" className="bg-slate-800">Pending</option>
                     <option value="PARTIAL" className="bg-slate-800">Partial</option>
                     <option value="COMPLETED" className="bg-slate-800">Completed</option>
@@ -635,13 +635,13 @@ export default function EditingPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-purple-300 mb-2">Notes</label>
-                <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows={3} className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Add any notes..." />
+                <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Notes</label>
+                <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows={3} className="w-full px-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation" placeholder="Add any notes..." />
               </div>
 
-              <div className="flex gap-4">
-                <button type="button" onClick={handleCancelEdit} className="px-6 py-3 rounded-xl bg-white/10 text-white font-semibold hover:bg-white/20 transition-colors">Cancel</button>
-                <button type="submit" disabled={formLoading} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold hover:shadow-lg disabled:opacity-50 transition-all">
+              <div className="flex gap-3 sm:gap-4">
+                <button type="button" onClick={handleCancelEdit} className="px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl bg-white/10 text-white font-semibold text-sm sm:text-base hover:bg-white/20 transition-colors active:scale-95">Cancel</button>
+                <button type="submit" disabled={formLoading} className="flex-1 py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold text-sm sm:text-base hover:shadow-lg disabled:opacity-50 transition-all active:scale-95">
                   {formLoading ? 'Saving...' : editingJob ? 'Update Job' : 'Save Job'}
                 </button>
               </div>
@@ -650,43 +650,82 @@ export default function EditingPage() {
         )}
 
         {/* Jobs List */}
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4 pb-24 sm:pb-0">
           {loading ? (
             <div className="text-center py-12">
               <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full mx-auto"></div>
-              <p className="text-purple-300 mt-4">Loading jobs...</p>
+              <p className="text-purple-300 mt-4 text-sm sm:text-base">Loading jobs...</p>
             </div>
           ) : jobs.length === 0 ? (
-            <div className="text-center py-16 bg-white/5 backdrop-blur border border-white/10 rounded-2xl">
-              <span className="text-6xl">✨</span>
-              <h3 className="text-xl font-bold text-white mt-4">No Editing Jobs Yet</h3>
-              <p className="text-purple-300 mt-2">Click "Add Job" to create your first editing job</p>
+            <div className="text-center py-12 sm:py-16 bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl">
+              <span className="text-4xl sm:text-6xl">✨</span>
+              <h3 className="text-lg sm:text-xl font-bold text-white mt-4">No Editing Jobs Yet</h3>
+              <p className="text-purple-300 text-sm sm:text-base mt-2">Click "Add Job" to create your first editing job</p>
             </div>
           ) : (
             jobs.map((job) => (
-              <div key={job.id} className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 hover:border-purple-500/50 transition-all">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-bold text-white">{job.customer_name}</h3>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${job.status === 'COMPLETED' ? 'bg-emerald-500/20 text-emerald-400' : job.status === 'IN_PROGRESS' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'}`}>
-                        {getStatusDisplay(job.status)}
-                      </span>
+              <div key={job.id} className="bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 hover:border-purple-500/50 transition-all active:scale-[0.99]">
+                <div className="flex flex-col gap-3 sm:gap-4">
+                  {/* Header Row */}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2 flex-wrap">
+                        <h3 className="text-base sm:text-lg font-bold text-white truncate">{job.customer_name}</h3>
+                        <span className={`px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium flex-shrink-0 ${job.status === 'COMPLETED' ? 'bg-emerald-500/20 text-emerald-400' : job.status === 'IN_PROGRESS' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                          {getStatusDisplay(job.status)}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-purple-300">
+                        {job.event_type && <span>📸 {job.event_type}</span>}
+                        <span>📅 {new Date(job.start_date).toLocaleDateString('en-IN')}</span>
+                        {job.customer_phone && <span className="hidden sm:inline">📞 {job.customer_phone}</span>}
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-4 text-sm text-purple-300">
-                      {job.event_type && <span>📸 {job.event_type}</span>}
-                      <span>📅 {new Date(job.start_date).toLocaleDateString('en-IN')}</span>
-                      {job.end_date && <span>→ {new Date(job.end_date).toLocaleDateString('en-IN')}</span>}
-                      {job.customer_phone && <span>📞 {job.customer_phone}</span>}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-6">
-                    <div className="text-right">
-                      <p className="text-2xl font-bold text-white">₹{job.total_price.toLocaleString('en-IN')}</p>
-                      <p className={`text-sm ${job.payment_status === 'COMPLETED' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                    
+                    {/* Desktop Price Display */}
+                    <div className="text-right hidden sm:block">
+                      <p className="text-xl sm:text-2xl font-bold text-white">₹{job.total_price.toLocaleString('en-IN')}</p>
+                      <p className={`text-xs sm:text-sm ${job.payment_status === 'COMPLETED' ? 'text-emerald-400' : 'text-amber-400'}`}>
                         {job.payment_status === 'COMPLETED' ? 'Paid' : `Pending: ₹${(job.total_price - job.amount_paid).toLocaleString('en-IN')}`}
                       </p>
                     </div>
+                  </div>
+                  
+                  {/* Mobile Price and Actions Row */}
+                  <div className="flex items-center justify-between gap-3 sm:hidden">
+                    <div>
+                      <p className="text-lg font-bold text-white">₹{job.total_price.toLocaleString('en-IN')}</p>
+                      <p className={`text-xs ${job.payment_status === 'COMPLETED' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                        {job.payment_status === 'COMPLETED' ? 'Paid' : `Pending: ₹${(job.total_price - job.amount_paid).toLocaleString('en-IN')}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {job.payment_status !== 'COMPLETED' && job.customer_phone && (
+                        <>
+                          <button onClick={() => sendWhatsAppReminder(job)} className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors active:scale-95" title="Send Reminder">
+                            <MessageCircle className="w-4 h-4" />
+                          </button>
+                          {getPendingCountForCustomer(job.customer_phone || '') > 1 && (
+                            <button onClick={() => sendAllPendingReminder(job.customer_phone || '')} className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors relative active:scale-95" title="Send All Reminders">
+                              <Send className="w-4 h-4" />
+                              <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[10px] rounded-full w-3.5 h-3.5 flex items-center justify-center">
+                                {getPendingCountForCustomer(job.customer_phone || '')}
+                              </span>
+                            </button>
+                          )}
+                        </>
+                      )}
+                      <button onClick={() => handleEdit(job)} className="p-2 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors active:scale-95">
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDelete(job.id)} className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors active:scale-95">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Desktop Actions */}
+                  <div className="hidden sm:flex items-center justify-end gap-2">
                     {job.payment_status !== 'COMPLETED' && job.customer_phone && (
                       <div className="flex items-center gap-1">
                         <button onClick={() => sendWhatsAppReminder(job)} className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors" title="Send Reminder for This Job">

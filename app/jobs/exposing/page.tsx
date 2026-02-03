@@ -343,39 +343,39 @@ Thank you for choosing us! 🙏
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-cyan-900 to-slate-900">
       {/* Header */}
-      <div className="border-b border-white/10 backdrop-blur-sm bg-black/20">
-        <div className="max-w-7xl mx-auto px-6 py-6">
+      <div className="border-b border-white/10 backdrop-blur-sm bg-black/20 sticky top-0 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <button onClick={() => router.back()} className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <button onClick={() => router.back()} className="p-2 rounded-lg bg-white/10 hover:bg-white/20 text-white transition-colors active:scale-95 touch-manipulation">
                 <ArrowLeft className="w-5 h-5" />
               </button>
               <div>
-                <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-                  <span className="text-3xl">📷</span> Exposing Sessions
+                <h1 className="text-lg sm:text-2xl font-bold text-white flex items-center gap-2 sm:gap-3">
+                  <span className="text-xl sm:text-3xl">📷</span> <span className="hidden xs:inline">Exposing</span> Sessions
                 </h1>
-                <p className="text-cyan-300 text-sm mt-1">Photo and video exposing</p>
+                <p className="text-cyan-300 text-xs sm:text-sm mt-0.5 sm:mt-1 hidden sm:block">Photo and video exposing</p>
               </div>
             </div>
-            <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-semibold hover:shadow-lg hover:shadow-cyan-500/25 transition-all">
-              <Plus className="w-5 h-5" /> Add Session
+            <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-semibold text-sm sm:text-base hover:shadow-lg hover:shadow-cyan-500/25 transition-all active:scale-95 touch-manipulation">
+              <Plus className="w-4 h-4 sm:w-5 sm:h-5" /> <span className="hidden sm:inline">Add</span> Session
             </button>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         {/* Form */}
         {showForm && (
-          <div className="mb-8 bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6">
-            <h2 className="text-xl font-bold text-white mb-6">{editingJob ? 'Edit Exposing Session' : 'New Exposing Session'}</h2>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="mb-6 sm:mb-8 bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+            <h2 className="text-lg sm:text-xl font-bold text-white mb-4 sm:mb-6">{editingJob ? 'Edit Exposing Session' : 'New Exposing Session'}</h2>
+            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {/* Customer Name with Autofill */}
                 <div className="relative">
-                  <label className="block text-sm font-medium text-cyan-300 mb-2">Customer Name *</label>
+                  <label className="block text-xs sm:text-sm font-medium text-cyan-300 mb-1.5 sm:mb-2">Customer Name *</label>
                   <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-400" />
+                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
                     <input 
                       ref={customerInputRef}
                       type="text" 
@@ -384,7 +384,7 @@ Thank you for choosing us! 🙏
                       onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })} 
                       onFocus={() => setShowCustomerSuggestions(true)}
                       onBlur={() => setTimeout(() => setShowCustomerSuggestions(false), 200)}
-                      className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-500" 
+                      className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-500 touch-manipulation" 
                       placeholder="Enter customer name"
                       autoComplete="off"
                     />
@@ -409,9 +409,9 @@ Thank you for choosing us! 🙏
 
                 {/* Phone Number with Autofill */}
                 <div className="relative">
-                  <label className="block text-sm font-medium text-cyan-300 mb-2">Mobile Number</label>
+                  <label className="block text-xs sm:text-sm font-medium text-cyan-300 mb-1.5 sm:mb-2">Mobile Number</label>
                   <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-400" />
+                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
                     <input 
                       ref={phoneInputRef}
                       type="tel" 
@@ -419,7 +419,7 @@ Thank you for choosing us! 🙏
                       onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })} 
                       onFocus={() => setShowPhoneSuggestions(true)}
                       onBlur={() => setTimeout(() => setShowPhoneSuggestions(false), 200)}
-                      className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-500" 
+                      className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-500 touch-manipulation" 
                       placeholder="9876543210"
                       autoComplete="off"
                     />
@@ -444,9 +444,9 @@ Thank you for choosing us! 🙏
 
                 {/* Studio Name with Autofill */}
                 <div className="relative">
-                  <label className="block text-sm font-medium text-cyan-300 mb-2">Studio Name</label>
+                  <label className="block text-xs sm:text-sm font-medium text-cyan-300 mb-1.5 sm:mb-2">Studio Name</label>
                   <div className="relative">
-                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-400" />
+                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
                     <input 
                       ref={studioInputRef}
                       type="text" 
@@ -454,7 +454,7 @@ Thank you for choosing us! 🙏
                       onChange={(e) => setFormData({ ...formData, studio_name: e.target.value })} 
                       onFocus={() => setShowStudioSuggestions(true)}
                       onBlur={() => setTimeout(() => setShowStudioSuggestions(false), 200)}
-                      className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-500" 
+                      className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-500 touch-manipulation" 
                       placeholder="Studio name"
                       autoComplete="off"
                     />
@@ -481,12 +481,12 @@ Thank you for choosing us! 🙏
 
                 {/* Event Type Dropdown */}
                 <div>
-                  <label className="block text-sm font-medium text-cyan-300 mb-2">Event Type</label>
+                  <label className="block text-xs sm:text-sm font-medium text-cyan-300 mb-1.5 sm:mb-2">Event Type</label>
                   {!showCustomEventInput ? (
                     <select 
                       value={formData.event_type} 
                       onChange={(e) => handleEventTypeChange(e.target.value)} 
-                      className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      className="w-full px-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-cyan-500 touch-manipulation"
                     >
                       <option value="" className="bg-slate-800">Select Event</option>
                       {EVENT_TYPES.map(type => (
@@ -499,13 +499,13 @@ Thank you for choosing us! 🙏
                         type="text" 
                         value={customEventType} 
                         onChange={(e) => setCustomEventType(e.target.value)} 
-                        className="flex-1 px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-500" 
+                        className="flex-1 px-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-500 touch-manipulation" 
                         placeholder="Enter event type"
                       />
                       <button 
                         type="button" 
                         onClick={() => { setShowCustomEventInput(false); setCustomEventType(''); }}
-                        className="px-3 py-2 bg-white/10 rounded-xl text-white hover:bg-white/20"
+                        className="px-3 py-2 bg-white/10 rounded-xl text-white hover:bg-white/20 active:scale-95 touch-manipulation"
                       >
                         ✕
                       </button>
@@ -514,32 +514,32 @@ Thank you for choosing us! 🙏
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-cyan-300 mb-2">Location</label>
+                  <label className="block text-xs sm:text-sm font-medium text-cyan-300 mb-1.5 sm:mb-2">Location</label>
                   <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-400" />
-                    <input type="text" value={formData.event_location} onChange={(e) => setFormData({ ...formData, event_location: e.target.value })} className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="Event location" />
+                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
+                    <input type="text" value={formData.event_location} onChange={(e) => setFormData({ ...formData, event_location: e.target.value })} className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-500 touch-manipulation" placeholder="Event location" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-cyan-300 mb-2">Event Start Date *</label>
+                  <label className="block text-xs sm:text-sm font-medium text-cyan-300 mb-1.5 sm:mb-2">Event Start Date *</label>
                   <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-400" />
-                    <input type="date" required value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
+                    <input type="date" required value={formData.start_date} onChange={(e) => setFormData({ ...formData, start_date: e.target.value })} className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-cyan-500 touch-manipulation" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-cyan-300 mb-2">Event End Date</label>
+                  <label className="block text-xs sm:text-sm font-medium text-cyan-300 mb-1.5 sm:mb-2">Event End Date</label>
                   <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-400" />
-                    <input type="date" value={formData.end_date} onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
+                    <input type="date" value={formData.end_date} onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-cyan-500 touch-manipulation" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-cyan-300 mb-2">Session Type</label>
-                  <select value={formData.session_type} onChange={(e) => setFormData({ ...formData, session_type: e.target.value })} className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                  <label className="block text-xs sm:text-sm font-medium text-cyan-300 mb-1.5 sm:mb-2">Session Type</label>
+                  <select value={formData.session_type} onChange={(e) => setFormData({ ...formData, session_type: e.target.value })} className="w-full px-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-cyan-500 touch-manipulation">
                     <option value="FULL_SESSION" className="bg-slate-800">Full Session</option>
                     <option value="HALF_SESSION" className="bg-slate-800">Half Session</option>
                     <option value="HOURLY" className="bg-slate-800">Hourly</option>
@@ -548,13 +548,13 @@ Thank you for choosing us! 🙏
 
                 {/* Type of Expose Dropdown */}
                 <div>
-                  <label className="block text-sm font-medium text-cyan-300 mb-2">Type of Expose</label>
+                  <label className="block text-xs sm:text-sm font-medium text-cyan-300 mb-1.5 sm:mb-2">Type of Expose</label>
                   <div className="relative">
-                    <Camera className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-400" />
+                    <Camera className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
                     <select 
                       value={formData.expose_type} 
                       onChange={(e) => setFormData({ ...formData, expose_type: e.target.value })} 
-                      className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                      className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-cyan-500 touch-manipulation"
                     >
                       <option value="" className="bg-slate-800">Select Type</option>
                       <option value="Man Expose" className="bg-slate-800">Man Expose</option>
@@ -566,45 +566,45 @@ Thank you for choosing us! 🙏
 
                 {/* Types of Camera - Manual Entry */}
                 <div>
-                  <label className="block text-sm font-medium text-cyan-300 mb-2">Types of Camera</label>
+                  <label className="block text-xs sm:text-sm font-medium text-cyan-300 mb-1.5 sm:mb-2">Types of Camera</label>
                   <div className="relative">
-                    <Camera className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-400" />
+                    <Camera className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
                     <input 
                       type="text" 
                       value={formData.camera_type} 
                       onChange={(e) => setFormData({ ...formData, camera_type: e.target.value })} 
-                      className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-500" 
+                      className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-500 touch-manipulation" 
                       placeholder="e.g., Canon 5D, Sony A7III"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-cyan-300 mb-2">Total Price (INR) *</label>
+                  <label className="block text-xs sm:text-sm font-medium text-cyan-300 mb-1.5 sm:mb-2">Total Price (INR) *</label>
                   <div className="relative">
-                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-400" />
-                    <input type="number" required min="0" value={formData.total_price} onChange={(e) => setFormData({ ...formData, total_price: parseFloat(e.target.value) || 0 })} className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="0" />
+                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
+                    <input type="number" required min="0" value={formData.total_price} onChange={(e) => setFormData({ ...formData, total_price: parseFloat(e.target.value) || 0 })} className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-cyan-500 touch-manipulation" placeholder="0" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-cyan-300 mb-2">Amount Paid (INR)</label>
+                  <label className="block text-xs sm:text-sm font-medium text-cyan-300 mb-1.5 sm:mb-2">Amount Paid (INR)</label>
                   <div className="relative">
-                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-400" />
-                    <input type="number" min="0" value={formData.amount_paid} onChange={(e) => setFormData({ ...formData, amount_paid: parseFloat(e.target.value) || 0 })} className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="0" />
+                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
+                    <input type="number" min="0" value={formData.amount_paid} onChange={(e) => setFormData({ ...formData, amount_paid: parseFloat(e.target.value) || 0 })} className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-cyan-500 touch-manipulation" placeholder="0" />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-cyan-300 mb-2">Balance (INR)</label>
-                  <div className={`px-4 py-3 rounded-xl font-bold text-lg ${balance > 0 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
+                  <label className="block text-xs sm:text-sm font-medium text-cyan-300 mb-1.5 sm:mb-2">Balance (INR)</label>
+                  <div className={`px-4 py-2.5 sm:py-3 rounded-xl font-bold text-base sm:text-lg ${balance > 0 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
                     ₹{balance.toLocaleString('en-IN')}
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-cyan-300 mb-2">Job Status</label>
-                  <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value as any })} className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                  <label className="block text-xs sm:text-sm font-medium text-cyan-300 mb-1.5 sm:mb-2">Job Status</label>
+                  <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value as any })} className="w-full px-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-cyan-500 touch-manipulation">
                     <option value="PENDING" className="bg-slate-800">Yet to Start</option>
                     <option value="IN_PROGRESS" className="bg-slate-800">In Progress</option>
                     <option value="COMPLETED" className="bg-slate-800">Completed</option>
@@ -612,8 +612,8 @@ Thank you for choosing us! 🙏
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-cyan-300 mb-2">Payment Status</label>
-                  <select value={formData.payment_status} onChange={(e) => setFormData({ ...formData, payment_status: e.target.value as any })} className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                  <label className="block text-xs sm:text-sm font-medium text-cyan-300 mb-1.5 sm:mb-2">Payment Status</label>
+                  <select value={formData.payment_status} onChange={(e) => setFormData({ ...formData, payment_status: e.target.value as any })} className="w-full px-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-cyan-500 touch-manipulation">
                     <option value="PENDING" className="bg-slate-800">Pending</option>
                     <option value="PARTIAL" className="bg-slate-800">Partial</option>
                     <option value="COMPLETED" className="bg-slate-800">Completed</option>
@@ -622,13 +622,13 @@ Thank you for choosing us! 🙏
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-cyan-300 mb-2">Notes</label>
-                <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows={3} className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-500" placeholder="Add any notes..." />
+                <label className="block text-xs sm:text-sm font-medium text-cyan-300 mb-1.5 sm:mb-2">Notes</label>
+                <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows={3} className="w-full px-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-500 touch-manipulation" placeholder="Add any notes..." />
               </div>
 
-              <div className="flex gap-4">
-                <button type="button" onClick={handleCancelEdit} className="px-6 py-3 rounded-xl bg-white/10 text-white font-semibold hover:bg-white/20 transition-colors">Cancel</button>
-                <button type="submit" disabled={formLoading} className="flex-1 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-semibold hover:shadow-lg disabled:opacity-50 transition-all">
+              <div className="flex gap-3 sm:gap-4">
+                <button type="button" onClick={handleCancelEdit} className="px-4 sm:px-6 py-2.5 sm:py-3 rounded-xl bg-white/10 text-white font-semibold text-sm sm:text-base hover:bg-white/20 transition-colors active:scale-95 touch-manipulation">Cancel</button>
+                <button type="submit" disabled={formLoading} className="flex-1 py-2.5 sm:py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-semibold text-sm sm:text-base hover:shadow-lg disabled:opacity-50 transition-all active:scale-95 touch-manipulation">
                   {formLoading ? 'Saving...' : editingJob ? 'Update Session' : 'Save Session'}
                 </button>
               </div>
@@ -637,22 +637,72 @@ Thank you for choosing us! 🙏
         )}
 
         {/* Jobs List */}
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4 pb-24 sm:pb-0">
           {loading ? (
             <div className="text-center py-12">
               <div className="animate-spin w-8 h-8 border-2 border-cyan-500 border-t-transparent rounded-full mx-auto"></div>
-              <p className="text-cyan-300 mt-4">Loading sessions...</p>
+              <p className="text-cyan-300 mt-4 text-sm sm:text-base">Loading sessions...</p>
             </div>
           ) : jobs.length === 0 ? (
-            <div className="text-center py-16 bg-white/5 backdrop-blur border border-white/10 rounded-2xl">
-              <span className="text-6xl">📷</span>
-              <h3 className="text-xl font-bold text-white mt-4">No Exposing Sessions Yet</h3>
-              <p className="text-cyan-300 mt-2">Click "Add Session" to create your first session</p>
+            <div className="text-center py-12 sm:py-16 bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl">
+              <span className="text-5xl sm:text-6xl">📷</span>
+              <h3 className="text-lg sm:text-xl font-bold text-white mt-4">No Exposing Sessions Yet</h3>
+              <p className="text-cyan-300 mt-2 text-sm sm:text-base">Click "Add Session" to create your first session</p>
             </div>
           ) : (
             jobs.map((job) => (
-              <div key={job.id} className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 hover:border-cyan-500/50 transition-all">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div key={job.id} className="bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 hover:border-cyan-500/50 transition-all active:scale-[0.99]">
+                {/* Mobile View */}
+                <div className="sm:hidden">
+                  <div className="flex justify-between items-start mb-3">
+                    <div>
+                      <h3 className="text-base font-bold text-white">{job.customer_name}</h3>
+                      <p className="text-cyan-300 text-xs mt-0.5">{job.event_type || 'Exposing Session'}</p>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${job.status === 'COMPLETED' ? 'bg-emerald-500/20 text-emerald-400' : job.status === 'IN_PROGRESS' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'}`}>
+                      {getStatusDisplay(job.status)}
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-xs text-cyan-300 mb-3">
+                    <span>📅 {new Date(job.start_date).toLocaleDateString('en-IN')}</span>
+                    {job.event_location && <span>📍 {job.event_location}</span>}
+                    {job.studio_name && <span>🏢 {job.studio_name}</span>}
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <p className="text-lg font-bold text-white">₹{job.total_price.toLocaleString('en-IN')}</p>
+                      <p className={`text-xs ${job.payment_status === 'COMPLETED' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                        {job.payment_status === 'COMPLETED' ? 'Paid' : `Bal: ₹${(job.total_price - job.amount_paid).toLocaleString('en-IN')}`}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {job.payment_status !== 'COMPLETED' && job.customer_phone && (
+                        <>
+                          <button onClick={() => sendWhatsAppReminder(job)} className="p-2 rounded-lg bg-green-500/20 text-green-400 active:scale-95 touch-manipulation">
+                            <MessageCircle className="w-4 h-4" />
+                          </button>
+                          {getPendingCountForCustomer(job.customer_phone) > 1 && (
+                            <button onClick={() => sendAllPendingReminder(job.customer_phone || '')} className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400 active:scale-95 touch-manipulation relative">
+                              <Send className="w-4 h-4" />
+                              <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[8px] rounded-full w-3.5 h-3.5 flex items-center justify-center">
+                                {getPendingCountForCustomer(job.customer_phone)}
+                              </span>
+                            </button>
+                          )}
+                        </>
+                      )}
+                      <button onClick={() => handleEdit(job)} className="p-2 rounded-lg bg-cyan-500/20 text-cyan-400 active:scale-95 touch-manipulation">
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDelete(job.id)} className="p-2 rounded-lg bg-red-500/20 text-red-400 active:scale-95 touch-manipulation">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Desktop View */}
+                <div className="hidden sm:flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="text-lg font-bold text-white">{job.customer_name}</h3>
@@ -679,11 +729,11 @@ Thank you for choosing us! 🙏
                     </div>
                     {job.payment_status !== 'COMPLETED' && job.customer_phone && (
                       <div className="flex items-center gap-1">
-                        <button onClick={() => sendWhatsAppReminder(job)} className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors" title="Send Reminder for This Job">
+                        <button onClick={() => sendWhatsAppReminder(job)} className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors active:scale-95" title="Send Reminder for This Job">
                           <MessageCircle className="w-5 h-5" />
                         </button>
                         {getPendingCountForCustomer(job.customer_phone) > 1 && (
-                          <button onClick={() => sendAllPendingReminder(job.customer_phone || '')} className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors relative" title={`Send All ${getPendingCountForCustomer(job.customer_phone)} Pending Reminders`}>
+                          <button onClick={() => sendAllPendingReminder(job.customer_phone || '')} className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors relative active:scale-95" title={`Send All ${getPendingCountForCustomer(job.customer_phone)} Pending Reminders`}>
                             <Send className="w-5 h-5" />
                             <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
                               {getPendingCountForCustomer(job.customer_phone)}
@@ -692,10 +742,10 @@ Thank you for choosing us! 🙏
                         )}
                       </div>
                     )}
-                    <button onClick={() => handleEdit(job)} className="p-2 rounded-lg bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 transition-colors">
+                    <button onClick={() => handleEdit(job)} className="p-2 rounded-lg bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 transition-colors active:scale-95">
                       <Edit2 className="w-5 h-5" />
                     </button>
-                    <button onClick={() => handleDelete(job.id)} className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors">
+                    <button onClick={() => handleDelete(job.id)} className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors active:scale-95">
                       <Trash2 className="w-5 h-5" />
                     </button>
                   </div>
