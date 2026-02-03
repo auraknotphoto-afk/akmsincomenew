@@ -700,9 +700,9 @@ export default function EditingPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {job.payment_status !== 'COMPLETED' && job.customer_phone && (
+                      {job.customer_phone && (
                         <>
-                          <button onClick={() => sendWhatsAppReminder(job)} className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors active:scale-95" title="Send Reminder">
+                          <button onClick={() => sendWhatsAppReminder(job)} className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors active:scale-95" title="Send WhatsApp">
                             <MessageCircle className="w-4 h-4" />
                           </button>
                           {getPendingCountForCustomer(job.customer_phone || '') > 1 && (
@@ -726,9 +726,9 @@ export default function EditingPage() {
 
                   {/* Desktop Actions */}
                   <div className="hidden sm:flex items-center justify-end gap-2">
-                    {job.payment_status !== 'COMPLETED' && job.customer_phone && (
+                    {job.customer_phone && (
                       <div className="flex items-center gap-1">
-                        <button onClick={() => sendWhatsAppReminder(job)} className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors" title="Send Reminder for This Job">
+                        <button onClick={() => sendWhatsAppReminder(job)} className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors" title="Send WhatsApp">
                           <MessageCircle className="w-5 h-5" />
                         </button>
                         {getPendingCountForCustomer(job.customer_phone || '') > 1 && (
