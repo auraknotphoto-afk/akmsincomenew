@@ -114,17 +114,22 @@ export const db = {
         const { data, error } = await query;
         if (error) {
           console.warn('[DB] Supabase error:', error.message, '- using localStorage only');
-        } else if (data && data.length > 0) {
-          console.log('[DB] Supabase returned', data.length, 'jobs');
-          // Merge: use Supabase data but include any localStorage-only items
-          const supabaseIds = new Set(data.map((j: Job) => j.id));
+        } else {
+          console.log('[DB] Supabase returned', data?.length || 0, 'jobs');
+          // Merge Supabase data with localStorage data
+          const supabaseJobs = data || [];
+          const supabaseIds = new Set(supabaseJobs.map((j: Job) => j.id));
           const localOnlyJobs = localJobs.filter(j => !supabaseIds.has(j.id));
+          
           if (localOnlyJobs.length > 0) {
             console.log('[DB] Found', localOnlyJobs.length, 'local-only jobs, merging...');
           }
-          const merged = [...data, ...localOnlyJobs];
+          
+          // Combine: Supabase jobs + local-only jobs
+          const merged = [...supabaseJobs, ...localOnlyJobs];
+          
           if (category) {
-            return merged.filter(j => j.category === category).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            return merged.filter(j => j.category === category).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) as Job[];
           }
           return merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) as Job[];
         }
@@ -133,7 +138,8 @@ export const db = {
       }
     }
     
-    // Return localStorage data
+    // Return localStorage data only (Supabase failed or not configured)
+    console.log('[DB] Returning localStorage data only');
     if (category) {
       localJobs = localJobs.filter(j => j.category === category);
     }
