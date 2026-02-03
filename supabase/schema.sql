@@ -62,12 +62,15 @@ CREATE TABLE IF NOT EXISTS jobs (
   number_of_cameras INTEGER,
   camera_type VARCHAR(100),
   duration_hours DECIMAL(6, 2),
+  rate_per_hour DECIMAL(10, 2),
+  client_name VARCHAR(255),
   
   -- Exposing Specific Fields
   studio_name VARCHAR(255),
   event_location VARCHAR(255),
   session_type VARCHAR(50),
   exposure_type VARCHAR(100),
+  expose_type VARCHAR(100),
   
   -- Other Income Fields
   type_of_work VARCHAR(255)

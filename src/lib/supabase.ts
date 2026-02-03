@@ -6,7 +6,15 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 // Check if Supabase is configured
 const isSupabaseConfigured = supabaseUrl && supabaseAnonKey && 
   supabaseUrl !== 'your_supabase_url' && 
-  supabaseAnonKey !== 'your_supabase_anon_key';
+  supabaseAnonKey !== 'your_supabase_anon_key' &&
+  supabaseUrl.includes('supabase.co');
+
+// Log connection status for debugging
+if (typeof window !== 'undefined') {
+  console.log('[Supabase] URL configured:', !!supabaseUrl);
+  console.log('[Supabase] Key configured:', !!supabaseAnonKey);
+  console.log('[Supabase] Will use Supabase:', isSupabaseConfigured);
+}
 
 export const supabase: SupabaseClient | null = isSupabaseConfigured 
   ? createClient(supabaseUrl, supabaseAnonKey)
@@ -76,9 +84,12 @@ function generateId(): string {
 export const db = {
   // Jobs
   async getJobs(userId: string, category?: string): Promise<Job[]> {
+    console.log('[DB] getJobs called - userId:', userId, 'category:', category);
+    
     // Use Supabase if configured
     if (supabase) {
       try {
+        console.log('[DB] Attempting Supabase fetch...');
         let query = supabase
           .from('jobs')
           .select('*')
@@ -91,18 +102,22 @@ export const db = {
         
         const { data, error } = await query;
         if (error) {
-          console.warn('Supabase getJobs error, falling back to localStorage:', error.message);
+          console.warn('[DB] Supabase error:', error.message, '- falling back to localStorage');
           // Fall through to localStorage
         } else {
+          console.log('[DB] Supabase returned', data?.length || 0, 'jobs');
           return data as Job[];
         }
       } catch (e) {
-        console.warn('Supabase connection error, using localStorage');
+        console.warn('[DB] Supabase connection error:', e, '- using localStorage');
       }
+    } else {
+      console.log('[DB] Supabase not configured, using localStorage');
     }
     
     // Fallback to localStorage
     let jobs = getLocalJobs();
+    console.log('[DB] localStorage returned', jobs.length, 'jobs');
     if (category) {
       jobs = jobs.filter(j => j.category === category);
     }
