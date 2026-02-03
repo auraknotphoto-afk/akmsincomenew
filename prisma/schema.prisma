@@ -1,0 +1,120 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String     @id @default(cuid())
+  phone     String     @unique
+  name      String?
+  otp       String?
+  otpExpiry DateTime?
+  verified  Boolean    @default(false)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  
+  jobs      Job[]
+  reports   Report[]
+}
+
+model Job {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Category: EDITING, EXPOSING, OTHER
+  category  JobCategory
+  
+  // Common fields
+  status    JobStatus    @default(PENDING)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  
+  // Editing & Exposing specific
+  customerName    String?
+  eventType       String?
+  startDate       DateTime?
+  endDate         DateTime?
+  eventLocation   String?
+  
+  // Editing specific
+  numberOfCameras Int?
+  cameraType      String?
+  durationHours   Float?
+  
+  // Exposing specific
+  studioName      String?
+  sessionType     ExposureSession?
+  exposureType    String?
+  
+  // Other Income
+  typeOfWork      String?
+  customerPhone   String?
+  notes           String?
+  
+  // Payment
+  totalPrice      Float    @default(0)
+  amountPaid      Float    @default(0)
+  balanceAmount   Float    @default(0)
+  paymentStatus   PaymentStatus @default(PENDING)
+  paymentDate     DateTime?
+  
+  @@index([userId])
+  @@index([category])
+  @@index([status])
+}
+
+model Report {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  reportType   ReportType
+  startDate    DateTime
+  endDate      DateTime
+  totalIncome  Float
+  pendingAmount Float
+  data         Json
+  
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  
+  @@index([userId])
+}
+
+enum JobCategory {
+  EDITING
+  EXPOSING
+  OTHER
+}
+
+enum JobStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum PaymentStatus {
+  PENDING
+  PARTIAL
+  COMPLETED
+}
+
+enum ExposureSession {
+  HALF_SESSION
+  FULL_SESSION
+  ONE_HALF_SESSION
+}
+
+enum ReportType {
+  MONTHLY
+  YEARLY
+  CUSTOM
+}
