@@ -142,12 +142,33 @@ export const db = {
 
   async createJob(job: Omit<Job, 'id' | 'created_at' | 'updated_at'>): Promise<Job> {
     const now = new Date().toISOString();
-    const newJob: Job = {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    
+    // Clean up empty strings - convert to null or default values for Supabase
+    const cleanedJob = {
       ...job,
+      start_date: job.start_date || today, // Default to today if empty
+      end_date: job.end_date || null,
+      payment_date: job.payment_date || null,
+      customer_phone: job.customer_phone || null,
+      client_name: job.client_name || null,
+      studio_name: job.studio_name || null,
+      event_type: job.event_type || null,
+      event_location: job.event_location || null,
+      session_type: job.session_type || null,
+      exposure_type: job.exposure_type || null,
+      expose_type: job.expose_type || null,
+      camera_type: job.camera_type || null,
+      type_of_work: job.type_of_work || null,
+      notes: job.notes || null,
+    };
+    
+    const newJob: Job = {
+      ...cleanedJob,
       id: generateId(),
       created_at: now,
       updated_at: now,
-    };
+    } as Job;
 
     console.log('[DB] createJob called with:', job.category, job.customer_name);
 
@@ -164,7 +185,7 @@ export const db = {
         const { data, error } = await supabase
           .from('jobs')
           .insert({
-            ...job,
+            ...cleanedJob,
             id: newJob.id,
             created_at: now,
             updated_at: now,
