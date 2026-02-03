@@ -86,11 +86,12 @@ export default function OtherPage() {
         setEditingJob(null);
       } else {
         // Create new job
-        await db.createJob({
+        const newJob = await db.createJob({
           ...formData,
           user_id: '00000000-0000-0000-0000-000000000001',
           category: 'OTHER',
         });
+        console.log('Job created successfully:', newJob.id);
       }
       
       setFormData({
@@ -108,6 +109,7 @@ export default function OtherPage() {
       fetchJobs();
     } catch (error) {
       console.error('Error creating job:', error);
+      alert('Error saving job: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setFormLoading(false);
     }

@@ -73,7 +73,14 @@ function getLocalJobs(): Job[] {
 
 function saveLocalJobs(jobs: Job[]): void {
   if (typeof window === 'undefined') return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
+    // Verify save worked
+    const saved = localStorage.getItem(STORAGE_KEY);
+    console.log('[DB] localStorage save verified:', saved ? 'OK' : 'FAILED');
+  } catch (e) {
+    console.error('[DB] localStorage save error:', e);
+  }
 }
 
 function generateId(): string {
