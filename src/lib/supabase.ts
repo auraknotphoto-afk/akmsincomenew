@@ -86,10 +86,14 @@ export const db = {
   async getJobs(userId: string, category?: string): Promise<Job[]> {
     console.log('[DB] getJobs called - userId:', userId, 'category:', category);
     
-    // Use Supabase if configured
+    // Always get localStorage data first
+    let localJobs = getLocalJobs();
+    console.log('[DB] localStorage has', localJobs.length, 'jobs');
+    
+    // Try to get from Supabase if configured
     if (supabase) {
       try {
-        console.log('[DB] Attempting Supabase fetch...');
+        console.log('[DB] Also checking Supabase...');
         let query = supabase
           .from('jobs')
           .select('*')
@@ -102,26 +106,31 @@ export const db = {
         
         const { data, error } = await query;
         if (error) {
-          console.warn('[DB] Supabase error:', error.message, '- falling back to localStorage');
-          // Fall through to localStorage
-        } else {
-          console.log('[DB] Supabase returned', data?.length || 0, 'jobs');
-          return data as Job[];
+          console.warn('[DB] Supabase error:', error.message, '- using localStorage only');
+        } else if (data && data.length > 0) {
+          console.log('[DB] Supabase returned', data.length, 'jobs');
+          // Merge: use Supabase data but include any localStorage-only items
+          const supabaseIds = new Set(data.map((j: Job) => j.id));
+          const localOnlyJobs = localJobs.filter(j => !supabaseIds.has(j.id));
+          if (localOnlyJobs.length > 0) {
+            console.log('[DB] Found', localOnlyJobs.length, 'local-only jobs, merging...');
+          }
+          const merged = [...data, ...localOnlyJobs];
+          if (category) {
+            return merged.filter(j => j.category === category).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+          }
+          return merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) as Job[];
         }
       } catch (e) {
-        console.warn('[DB] Supabase connection error:', e, '- using localStorage');
+        console.warn('[DB] Supabase connection error:', e, '- using localStorage only');
       }
-    } else {
-      console.log('[DB] Supabase not configured, using localStorage');
     }
     
-    // Fallback to localStorage
-    let jobs = getLocalJobs();
-    console.log('[DB] localStorage returned', jobs.length, 'jobs');
+    // Return localStorage data
     if (category) {
-      jobs = jobs.filter(j => j.category === category);
+      localJobs = localJobs.filter(j => j.category === category);
     }
-    return jobs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return localJobs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   },
 
   async createJob(job: Omit<Job, 'id' | 'created_at' | 'updated_at'>): Promise<Job> {
@@ -135,33 +144,37 @@ export const db = {
 
     console.log('[DB] createJob called with:', job.category, job.customer_name);
 
-    // Use Supabase if configured
+    // Always save to localStorage first (ensures data is never lost)
+    const jobs = getLocalJobs();
+    jobs.unshift(newJob);
+    saveLocalJobs(jobs);
+    console.log('[DB] Saved to localStorage, total jobs:', jobs.length);
+
+    // Also try to save to Supabase if configured
     if (supabase) {
       try {
-        console.log('[DB] Attempting to save to Supabase...');
+        console.log('[DB] Also saving to Supabase...');
         const { data, error } = await supabase
           .from('jobs')
-          .insert(job)
+          .insert({
+            ...job,
+            id: newJob.id,
+            created_at: now,
+            updated_at: now,
+          })
           .select()
           .single();
         
         if (error) {
-          console.error('[DB] Supabase createJob error:', error.message, error.details, error.hint);
-          // Fall through to localStorage
+          console.error('[DB] Supabase error (data still in localStorage):', error.message);
         } else {
-          console.log('[DB] Successfully saved to Supabase, id:', data?.id);
-          return data as Job;
+          console.log('[DB] Also saved to Supabase successfully');
         }
       } catch (e) {
-        console.error('[DB] Supabase connection error:', e);
+        console.error('[DB] Supabase connection error (data still in localStorage):', e);
       }
     }
     
-    // Fallback to localStorage
-    console.log('[DB] Saving to localStorage as fallback');
-    const jobs = getLocalJobs();
-    jobs.unshift(newJob);
-    saveLocalJobs(jobs);
     return newJob;
   },
 
