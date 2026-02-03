@@ -106,92 +106,50 @@ CREATE TRIGGER update_jobs_updated_at
   EXECUTE FUNCTION update_updated_at_column();
 
 -- =============================================
--- ROW LEVEL SECURITY (RLS) - ENABLED
+-- ROW LEVEL SECURITY (RLS) - DEMO MODE
 -- =============================================
 -- Enable RLS on all tables
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
 
 -- =============================================
--- RLS POLICIES FOR USERS TABLE
+-- RLS POLICIES FOR DEMO MODE (ALLOWS ANONYMOUS ACCESS)
 -- =============================================
+-- For production, replace these with authenticated-only policies
 
--- Users can view their own profile
+-- USERS TABLE - Allow all operations for demo
 DROP POLICY IF EXISTS "Users can view own profile" ON users;
-CREATE POLICY "Users can view own profile" ON users
-  FOR SELECT
-  USING (auth.uid() = id);
-
--- Users can update their own profile
 DROP POLICY IF EXISTS "Users can update own profile" ON users;
-CREATE POLICY "Users can update own profile" ON users
-  FOR UPDATE
-  USING (auth.uid() = id)
-  WITH CHECK (auth.uid() = id);
-
--- Allow insert for new user registration
 DROP POLICY IF EXISTS "Allow user registration" ON users;
-CREATE POLICY "Allow user registration" ON users
-  FOR INSERT
+DROP POLICY IF EXISTS "Service role can manage users" ON users;
+DROP POLICY IF EXISTS "Allow all users operations" ON users;
+
+CREATE POLICY "Allow all users operations" ON users
+  FOR ALL
+  USING (true)
+  WITH CHECK (true);
+
+-- JOBS TABLE - Allow all operations for demo
+DROP POLICY IF EXISTS "Users can view own jobs" ON jobs;
+DROP POLICY IF EXISTS "Users can create own jobs" ON jobs;
+DROP POLICY IF EXISTS "Users can update own jobs" ON jobs;
+DROP POLICY IF EXISTS "Users can delete own jobs" ON jobs;
+DROP POLICY IF EXISTS "Service role can manage jobs" ON jobs;
+DROP POLICY IF EXISTS "Allow all jobs operations" ON jobs;
+
+CREATE POLICY "Allow all jobs operations" ON jobs
+  FOR ALL
+  USING (true)
   WITH CHECK (true);
 
 -- =============================================
--- RLS POLICIES FOR JOBS TABLE
+-- GRANT PERMISSIONS (DEMO MODE - Anonymous Access)
 -- =============================================
+-- Grant access to anon for demo mode
+GRANT SELECT, INSERT, UPDATE, DELETE ON users TO anon;
+GRANT SELECT, INSERT, UPDATE, DELETE ON jobs TO anon;
 
--- Users can view their own jobs
-DROP POLICY IF EXISTS "Users can view own jobs" ON jobs;
-CREATE POLICY "Users can view own jobs" ON jobs
-  FOR SELECT
-  USING (auth.uid() = user_id);
-
--- Users can create jobs for themselves
-DROP POLICY IF EXISTS "Users can create own jobs" ON jobs;
-CREATE POLICY "Users can create own jobs" ON jobs
-  FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-
--- Users can update their own jobs
-DROP POLICY IF EXISTS "Users can update own jobs" ON jobs;
-CREATE POLICY "Users can update own jobs" ON jobs
-  FOR UPDATE
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
-
--- Users can delete their own jobs
-DROP POLICY IF EXISTS "Users can delete own jobs" ON jobs;
-CREATE POLICY "Users can delete own jobs" ON jobs
-  FOR DELETE
-  USING (auth.uid() = user_id);
-
--- =============================================
--- SERVICE ROLE POLICIES (for admin operations)
--- =============================================
--- Service role bypasses RLS by default, but we add explicit policies
--- for operations that need elevated access
-
--- Allow service role to manage all users (for OTP verification)
-DROP POLICY IF EXISTS "Service role can manage users" ON users;
-CREATE POLICY "Service role can manage users" ON users
-  FOR ALL
-  USING (auth.jwt() ->> 'role' = 'service_role')
-  WITH CHECK (auth.jwt() ->> 'role' = 'service_role');
-
--- Allow service role to manage all jobs (for admin reports)
-DROP POLICY IF EXISTS "Service role can manage jobs" ON jobs;
-CREATE POLICY "Service role can manage jobs" ON jobs
-  FOR ALL
-  USING (auth.jwt() ->> 'role' = 'service_role')
-  WITH CHECK (auth.jwt() ->> 'role' = 'service_role');
-
--- =============================================
--- GRANT PERMISSIONS (Production - Authenticated Only)
--- =============================================
--- Revoke all from anon (no anonymous access)
-REVOKE ALL ON users FROM anon;
-REVOKE ALL ON jobs FROM anon;
-
--- Grant full access to authenticated users (RLS will filter)
+-- Grant full access to authenticated users
 GRANT SELECT, INSERT, UPDATE ON users TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON jobs TO authenticated;
 
