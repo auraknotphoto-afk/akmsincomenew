@@ -193,10 +193,14 @@ export default function EditingPage() {
   async function handleDelete(id: string) {
     if (!confirm('Are you sure you want to delete this job?')) return;
     try {
+      console.log('[UI] Deleting job:', id);
       await db.deleteJob(id);
-      fetchJobs();
+      // Immediately update UI by removing from state
+      setJobs(prev => prev.filter(j => j.id !== id));
+      console.log('[UI] Job deleted successfully');
     } catch (error) {
       console.error('Error deleting job:', error);
+      alert('Error deleting job: ' + (error as Error).message);
     }
   }
 
