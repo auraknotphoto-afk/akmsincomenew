@@ -133,9 +133,12 @@ export const db = {
       updated_at: now,
     };
 
+    console.log('[DB] createJob called with:', job.category, job.customer_name);
+
     // Use Supabase if configured
     if (supabase) {
       try {
+        console.log('[DB] Attempting to save to Supabase...');
         const { data, error } = await supabase
           .from('jobs')
           .insert(job)
@@ -143,17 +146,19 @@ export const db = {
           .single();
         
         if (error) {
-          console.warn('Supabase createJob error, falling back to localStorage:', error.message);
+          console.error('[DB] Supabase createJob error:', error.message, error.details, error.hint);
           // Fall through to localStorage
         } else {
+          console.log('[DB] Successfully saved to Supabase, id:', data?.id);
           return data as Job;
         }
       } catch (e) {
-        console.warn('Supabase connection error, using localStorage');
+        console.error('[DB] Supabase connection error:', e);
       }
     }
     
     // Fallback to localStorage
+    console.log('[DB] Saving to localStorage as fallback');
     const jobs = getLocalJobs();
     jobs.unshift(newJob);
     saveLocalJobs(jobs);
