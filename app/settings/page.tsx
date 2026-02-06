@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, MessageCircle, Save, Sparkles, RefreshCw, Fingerprint, LogOut, User, Clock, Shield } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Save, RefreshCw, Fingerprint, LogOut, User, Clock, Shield, Edit2, Check, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 // Default WhatsApp message templates
@@ -39,6 +39,99 @@ Thank you for choosing us! 🙏
 - Aura Knot Photography`
 };
 
+// Default Job Status Templates
+const DEFAULT_JOB_STATUS_TEMPLATES = {
+  PENDING: `Hi {customer_name},
+
+Your {service_type} job has been *received* and is currently *PENDING*.
+
+📋 *Job Details:*
+{service_icon} Service: {service_type}
+📅 Date: {date}
+
+We will start working on it soon and keep you updated.
+
+Thank you for choosing *Aura Knot Photography*! 🙏`,
+
+  IN_PROGRESS: `Hi {customer_name},
+
+Great news! Your {service_type} is now *IN PROGRESS*.
+
+📋 *Job Details:*
+{service_icon} Service: {service_type}
+📅 Date: {date}
+
+Our team is working on it. We'll notify you once completed.
+
+Thank you for your patience! 🙏
+
+- Aura Knot Photography`,
+
+  COMPLETED: `Hi {customer_name},
+
+🎉 Your {service_type} is now *COMPLETED*!
+
+📋 *Job Details:*
+{service_icon} Service: {service_type}
+📅 Date: {date}
+
+{balance_message}
+
+Thank you for choosing *Aura Knot Photography*! 🙏
+
+We hope you love the results! ❤️`
+};
+
+// Default Payment Status Templates
+const DEFAULT_PAYMENT_STATUS_TEMPLATES = {
+  PENDING: `Hi {customer_name},
+
+This is a reminder about your *PENDING PAYMENT*.
+
+📋 *Payment Details:*
+{service_icon} Service: {service_type}
+📅 Date: {date}
+💰 Total Amount: Rs.{total_amount}
+⏳ *Balance Due: Rs.{balance}*
+
+Please complete the payment at your earliest convenience.
+
+Thank you! 🙏
+
+- Aura Knot Photography`,
+
+  PARTIAL: `Hi {customer_name},
+
+Thank you for your partial payment! 🙏
+
+📋 *Payment Details:*
+{service_icon} Service: {service_type}
+📅 Date: {date}
+💰 Total Amount: Rs.{total_amount}
+✅ Amount Paid: Rs.{amount_paid}
+⏳ *Remaining Balance: Rs.{balance}*
+
+Please clear the remaining balance when convenient.
+
+Thank you for choosing *Aura Knot Photography*!`,
+
+  COMPLETED: `Hi {customer_name},
+
+✅ *PAYMENT RECEIVED*
+
+Thank you for completing your payment!
+
+📋 *Payment Details:*
+{service_icon} Service: {service_type}
+📅 Date: {date}
+💰 Total Amount: Rs.{total_amount}
+✅ *Fully Paid*
+
+We appreciate your trust in *Aura Knot Photography*! 🙏
+
+Thank you for choosing us! ❤️`
+};
+
 // Available placeholders
 const PLACEHOLDERS = [
   { key: '{customer_name}', desc: 'Customer name' },
@@ -62,9 +155,18 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<'single' | 'consolidated'>('single');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
   const [biometricRegistered, setBiometricRegistered] = useState(false);
   const [sessionTimeout, setSessionTimeout] = useState(15);
+  
+  // Job Status Templates
+  const [jobStatusTemplates, setJobStatusTemplates] = useState(DEFAULT_JOB_STATUS_TEMPLATES);
+  const [editingJobStatus, setEditingJobStatus] = useState<string | null>(null);
+  const [expandedJobStatus, setExpandedJobStatus] = useState(false);
+  
+  // Payment Status Templates
+  const [paymentStatusTemplates, setPaymentStatusTemplates] = useState(DEFAULT_PAYMENT_STATUS_TEMPLATES);
+  const [editingPaymentStatus, setEditingPaymentStatus] = useState<string | null>(null);
+  const [expandedPaymentStatus, setExpandedPaymentStatus] = useState(false);
 
   // Load saved templates
   useEffect(() => {
@@ -72,11 +174,15 @@ export default function SettingsPage() {
     const savedConsolidated = localStorage.getItem('akms_whatsapp_consolidated');
     const savedTimeout = localStorage.getItem('akms_session_timeout');
     const biometricReg = localStorage.getItem('akms_biometric_registered');
+    const savedJobStatusTemplates = localStorage.getItem('akms_job_status_templates');
+    const savedPaymentStatusTemplates = localStorage.getItem('akms_payment_status_templates');
     
     if (savedSingle) setSingleTemplate(savedSingle);
     if (savedConsolidated) setConsolidatedTemplate(savedConsolidated);
     if (savedTimeout) setSessionTimeout(parseInt(savedTimeout));
     if (biometricReg) setBiometricRegistered(true);
+    if (savedJobStatusTemplates) setJobStatusTemplates(JSON.parse(savedJobStatusTemplates));
+    if (savedPaymentStatusTemplates) setPaymentStatusTemplates(JSON.parse(savedPaymentStatusTemplates));
   }, []);
 
   const handleSave = () => {
@@ -84,6 +190,8 @@ export default function SettingsPage() {
     localStorage.setItem('akms_whatsapp_single', singleTemplate);
     localStorage.setItem('akms_whatsapp_consolidated', consolidatedTemplate);
     localStorage.setItem('akms_session_timeout', sessionTimeout.toString());
+    localStorage.setItem('akms_job_status_templates', JSON.stringify(jobStatusTemplates));
+    localStorage.setItem('akms_payment_status_templates', JSON.stringify(paymentStatusTemplates));
     
     setTimeout(() => {
       setSaving(false);
@@ -110,104 +218,6 @@ export default function SettingsPage() {
     } else {
       alert('Failed to enable biometric authentication. Please try again.');
     }
-  };
-
-  const handleAIGenerate = async (type: 'single' | 'consolidated') => {
-    setAiLoading(true);
-    
-    // Simulate AI generation (in production, connect to an AI API)
-    const aiPrompts = {
-      single: [
-        `Hello {customer_name}! 👋
-
-Quick reminder from *Aura Knot Photography*:
-
-📌 *{service_type}*
-📆 Date: {date}
-
-💳 Payment Summary:
-• Total: Rs.{total_amount}
-• Paid: Rs.{amount_paid}
-• *Due: Rs.{balance}*
-
-Kindly settle the balance at your convenience. Thank you! 🙏`,
-
-        `Dear {customer_name},
-
-Hope this message finds you well! ✨
-
-This is a gentle reminder about your outstanding balance with *Aura Knot Photography*.
-
-{service_icon} *{service_type}*
-📅 {date}
-
-💰 Rs.{balance} pending (of Rs.{total_amount})
-
-We appreciate your prompt attention to this matter.
-
-Warm regards,
-Aura Knot Photography 📸`,
-
-        `Hi {customer_name}! 😊
-
-Just a friendly nudge from *Aura Knot Photography*!
-
-Your {service_type} session on {date} has a pending balance.
-
-📊 *Payment Status:*
-Total: Rs.{total_amount}
-Paid: Rs.{amount_paid}
-Balance: Rs.{balance}
-
-Please complete the payment when convenient.
-
-Thank you! 🙏✨`
-      ],
-      consolidated: [
-        `Hi {customer_name}! 👋
-
-Here's your payment summary from *Aura Knot Photography*:
-
-📋 *You have {count} pending service(s):*
-{jobs_list}
-
-💵 *Total Outstanding: Rs.{total_balance}*
-
-Please clear the dues at your earliest convenience.
-
-Thanks for your continued support! 🙏`,
-
-        `Dear {customer_name},
-
-Greetings from *Aura Knot Photography*! ✨
-
-Quick update on your account:
-
-📝 *Pending Payments ({count}):*
-{jobs_list}
-
-━━━━━━━━━━━━━━━
-💰 *Grand Total Due: Rs.{total_balance}*
-
-We'd appreciate your prompt settlement.
-
-Best regards,
-Aura Knot Photography 📸`
-      ]
-    };
-
-    // Randomly select one of the AI-generated templates
-    setTimeout(() => {
-      const templates = aiPrompts[type];
-      const randomTemplate = templates[Math.floor(Math.random() * templates.length)];
-      
-      if (type === 'single') {
-        setSingleTemplate(randomTemplate);
-      } else {
-        setConsolidatedTemplate(randomTemplate);
-      }
-      setAiLoading(false);
-    }, 1500);
   };
 
   const insertPlaceholder = (placeholder: string) => {
@@ -360,23 +370,11 @@ Aura Knot Photography 📸`
           <div className="space-y-3 sm:space-y-4">
             <div className="flex gap-2 flex-wrap">
               <button
-                onClick={() => handleAIGenerate(activeTab)}
-                disabled={aiLoading}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium text-xs sm:text-sm hover:shadow-lg hover:shadow-purple-500/25 transition-all disabled:opacity-50 active:scale-95"
-              >
-                {aiLoading ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Sparkles className="w-4 h-4" />
-                )}
-                {aiLoading ? 'Generating...' : 'AI Generate'}
-              </button>
-              <button
                 onClick={() => handleReset(activeTab)}
                 className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg bg-white/10 text-slate-300 hover:bg-white/20 transition-colors text-xs sm:text-sm active:scale-95"
               >
                 <RefreshCw className="w-4 h-4" />
-                Reset
+                Reset to Default
               </button>
             </div>
 
@@ -409,7 +407,179 @@ Aura Knot Photography 📸`
                 ))}
               </div>
             </div>
+
+            {/* Save Button */}
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm transition-all active:scale-95 ${
+                saved
+                  ? 'bg-emerald-500 text-white'
+                  : 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:shadow-lg hover:shadow-green-500/25'
+              } disabled:opacity-50`}
+            >
+              <Save className="w-4 h-4" />
+              {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Template'}
+            </button>
           </div>
+        </div>
+
+        {/* Job Status Templates */}
+        <div className="bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+          <button 
+            onClick={() => setExpandedJobStatus(!expandedJobStatus)}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
+              Job Status Templates
+            </h2>
+            {expandedJobStatus ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
+          </button>
+          <p className="text-slate-400 text-xs sm:text-sm mt-1">Templates for PENDING, IN_PROGRESS, COMPLETED job statuses</p>
+          
+          {expandedJobStatus && (
+            <div className="mt-4 space-y-4">
+              {(['PENDING', 'IN_PROGRESS', 'COMPLETED'] as const).map((status) => (
+                <div key={status} className="bg-white/5 rounded-xl p-4 border border-white/10">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      status === 'PENDING' ? 'bg-amber-500/20 text-amber-400' :
+                      status === 'IN_PROGRESS' ? 'bg-blue-500/20 text-blue-400' :
+                      'bg-emerald-500/20 text-emerald-400'
+                    }`}>
+                      {status.replace('_', ' ')}
+                    </span>
+                    <div className="flex gap-2">
+                      {editingJobStatus === status ? (
+                        <>
+                          <button
+                            onClick={() => setEditingJobStatus(null)}
+                            className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 active:scale-95"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setJobStatusTemplates(prev => ({
+                                ...prev,
+                                [status]: DEFAULT_JOB_STATUS_TEMPLATES[status]
+                              }));
+                              setEditingJobStatus(null);
+                            }}
+                            className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 active:scale-95"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => setEditingJobStatus(status)}
+                          className="p-2 rounded-lg bg-white/10 text-slate-300 hover:bg-white/20 active:scale-95"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {editingJobStatus === status ? (
+                    <textarea
+                      value={jobStatusTemplates[status]}
+                      onChange={(e) => setJobStatusTemplates(prev => ({
+                        ...prev,
+                        [status]: e.target.value
+                      }))}
+                      rows={8}
+                      className="w-full px-3 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs sm:text-sm"
+                    />
+                  ) : (
+                    <pre className="text-slate-300 text-xs sm:text-sm whitespace-pre-wrap font-mono bg-black/20 rounded-lg p-3 max-h-32 overflow-y-auto">
+                      {jobStatusTemplates[status]}
+                    </pre>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Payment Status Templates */}
+        <div className="bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+          <button 
+            onClick={() => setExpandedPaymentStatus(!expandedPaymentStatus)}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2">
+              <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-400" />
+              Payment Status Templates
+            </h2>
+            {expandedPaymentStatus ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
+          </button>
+          <p className="text-slate-400 text-xs sm:text-sm mt-1">Templates for PENDING, PARTIAL, COMPLETED payment statuses</p>
+          
+          {expandedPaymentStatus && (
+            <div className="mt-4 space-y-4">
+              {(['PENDING', 'PARTIAL', 'COMPLETED'] as const).map((status) => (
+                <div key={status} className="bg-white/5 rounded-xl p-4 border border-white/10">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      status === 'PENDING' ? 'bg-red-500/20 text-red-400' :
+                      status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' :
+                      'bg-emerald-500/20 text-emerald-400'
+                    }`}>
+                      {status}
+                    </span>
+                    <div className="flex gap-2">
+                      {editingPaymentStatus === status ? (
+                        <>
+                          <button
+                            onClick={() => setEditingPaymentStatus(null)}
+                            className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 active:scale-95"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setPaymentStatusTemplates(prev => ({
+                                ...prev,
+                                [status]: DEFAULT_PAYMENT_STATUS_TEMPLATES[status]
+                              }));
+                              setEditingPaymentStatus(null);
+                            }}
+                            className="p-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 active:scale-95"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => setEditingPaymentStatus(status)}
+                          className="p-2 rounded-lg bg-white/10 text-slate-300 hover:bg-white/20 active:scale-95"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  {editingPaymentStatus === status ? (
+                    <textarea
+                      value={paymentStatusTemplates[status]}
+                      onChange={(e) => setPaymentStatusTemplates(prev => ({
+                        ...prev,
+                        [status]: e.target.value
+                      }))}
+                      rows={8}
+                      className="w-full px-3 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-yellow-500 font-mono text-xs sm:text-sm"
+                    />
+                  ) : (
+                    <pre className="text-slate-300 text-xs sm:text-sm whitespace-pre-wrap font-mono bg-black/20 rounded-lg p-3 max-h-32 overflow-y-auto">
+                      {paymentStatusTemplates[status]}
+                    </pre>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Save Button */}

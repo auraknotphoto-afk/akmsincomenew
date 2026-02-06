@@ -47,6 +47,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check for existing session on mount
   useEffect(() => {
+    // Auto-authenticate on localhost (development mode)
+    if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
+      setIsAuthenticated(true);
+      setUser({ username: 'auraknot' });
+      setLoading(false);
+      return;
+    }
+    
     const session = localStorage.getItem('akms_session');
     const sessionTime = localStorage.getItem('akms_session_time');
     

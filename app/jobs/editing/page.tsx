@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Plus, Camera, Calendar, User, IndianRupee, Trash2, Phone, Edit2, MessageCircle, Send, Building2, Clock } from 'lucide-react';
 import { db, Job } from '@/lib/supabase';
-import { formatSingleReminder, formatConsolidatedReminder, generateWhatsAppUrl, getServiceIcon } from '@/lib/whatsappTemplates';
+import { formatSingleReminder, formatConsolidatedReminder, generateWhatsAppUrl, getServiceIcon, formatJobStatusMessage, formatPaymentStatusMessage } from '@/lib/whatsappTemplates';
 
 // Event types list - used across the app
 const EVENT_TYPES = [
@@ -385,9 +385,9 @@ export default function EditingPage() {
             <h2 className="text-base sm:text-xl font-bold text-white mb-4 sm:mb-6">{editingJob ? 'Edit Editing Job' : 'New Editing Job'}</h2>
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                {/* Customer Name with Autofill */}
+                {/* Studio Name/Customer Name with Autofill */}
                 <div className="relative">
-                  <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Customer Name *</label>
+                  <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Studio Name/Customer Name *</label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
                     <input 
@@ -399,7 +399,7 @@ export default function EditingPage() {
                       onFocus={() => setShowCustomerSuggestions(true)}
                       onBlur={() => setTimeout(() => setShowCustomerSuggestions(false), 200)}
                       className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation" 
-                      placeholder="Enter customer name"
+                      placeholder="Enter studio/customer name"
                       autoComplete="off"
                     />
                   </div>
@@ -467,21 +467,6 @@ export default function EditingPage() {
                       onChange={(e) => setFormData({ ...formData, client_name: e.target.value })} 
                       className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation" 
                       placeholder="Enter client name"
-                    />
-                  </div>
-                </div>
-
-                {/* Studio Name */}
-                <div>
-                  <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Studio Name</label>
-                  <div className="relative">
-                    <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
-                    <input 
-                      type="text" 
-                      value={formData.studio_name} 
-                      onChange={(e) => setFormData({ ...formData, studio_name: e.target.value })} 
-                      className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation" 
-                      placeholder="Enter studio name"
                     />
                   </div>
                 </div>
@@ -623,20 +608,64 @@ export default function EditingPage() {
 
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Job Status</label>
-                  <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value as any })} className="w-full px-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation">
-                    <option value="PENDING" className="bg-slate-800">Yet to Start</option>
-                    <option value="IN_PROGRESS" className="bg-slate-800">In Progress</option>
-                    <option value="COMPLETED" className="bg-slate-800">Completed</option>
-                  </select>
+                  <div className="flex gap-2">
+                    <select value={formData.status} onChange={(e) => setFormData({ ...formData, status: e.target.value as any })} className="flex-1 px-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation">
+                      <option value="PENDING" className="bg-slate-800">Yet to Start</option>
+                      <option value="IN_PROGRESS" className="bg-slate-800">In Progress</option>
+                      <option value="COMPLETED" className="bg-slate-800">Completed</option>
+                    </select>
+                    {formData.customer_phone && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const message = formatJobStatusMessage(formData.status, {
+                            customer_name: formData.customer_name,
+                            event_type: formData.event_type,
+                            start_date: formData.start_date,
+                            total_price: formData.total_price,
+                            amount_paid: formData.amount_paid,
+                            category: 'EDITING'
+                          });
+                          window.open(generateWhatsAppUrl(formData.customer_phone, message), '_blank');
+                        }}
+                        className="p-2.5 sm:p-3 rounded-xl bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors active:scale-95"
+                        title="Send Job Status via WhatsApp"
+                      >
+                        <MessageCircle className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Payment Status</label>
-                  <select value={formData.payment_status} onChange={(e) => setFormData({ ...formData, payment_status: e.target.value as any })} className="w-full px-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation">
-                    <option value="PENDING" className="bg-slate-800">Pending</option>
-                    <option value="PARTIAL" className="bg-slate-800">Partial</option>
-                    <option value="COMPLETED" className="bg-slate-800">Completed</option>
-                  </select>
+                  <div className="flex gap-2">
+                    <select value={formData.payment_status} onChange={(e) => setFormData({ ...formData, payment_status: e.target.value as any })} className="flex-1 px-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation">
+                      <option value="PENDING" className="bg-slate-800">Pending</option>
+                      <option value="PARTIAL" className="bg-slate-800">Partial</option>
+                      <option value="COMPLETED" className="bg-slate-800">Completed</option>
+                    </select>
+                    {formData.customer_phone && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const message = formatPaymentStatusMessage(formData.payment_status, {
+                            customer_name: formData.customer_name,
+                            event_type: formData.event_type,
+                            start_date: formData.start_date,
+                            total_price: formData.total_price,
+                            amount_paid: formData.amount_paid,
+                            category: 'EDITING'
+                          });
+                          window.open(generateWhatsAppUrl(formData.customer_phone, message), '_blank');
+                        }}
+                        className="p-2.5 sm:p-3 rounded-xl bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors active:scale-95"
+                        title="Send Payment Status via WhatsApp"
+                      >
+                        <MessageCircle className="w-5 h-5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 

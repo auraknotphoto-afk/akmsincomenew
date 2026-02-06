@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { TrendingUp, DollarSign, Clock, Briefcase, Plus, BarChart3, ArrowRight, Calendar, Settings, LogOut } from 'lucide-react';
+import { TrendingUp, DollarSign, Clock, Briefcase, Plus, BarChart3, ArrowRight, Calendar, Settings, LogOut, Camera, Edit, ChevronDown } from 'lucide-react';
 import { db, Job } from '@/lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -75,6 +75,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('this_month');
+  const [showAddJobMenu, setShowAddJobMenu] = useState(false);
   const [summary, setSummary] = useState({
     totalIncome: 0,
     totalPaid: 0,
@@ -117,9 +118,17 @@ export default function DashboardPage() {
       const allJobs = await db.getJobs('00000000-0000-0000-0000-000000000001');
       const { start, end } = getDateRange(selectedPeriod);
       
-      // Filter by date range
+      // Helper function to parse date string as local time (not UTC)
+      const parseLocalDate = (dateStr: string) => {
+        if (!dateStr) return null;
+        const [year, month, day] = dateStr.split('-').map(Number);
+        return new Date(year, month - 1, day); // month is 0-indexed
+      };
+      
+      // Filter by event end_date (or start_date if end_date not available)
       const filteredJobs = allJobs.filter(job => {
-        const jobDate = new Date(job.start_date);
+        const jobDate = parseLocalDate(job.end_date || job.start_date);
+        if (!jobDate) return false;
         return jobDate >= start && jobDate <= end;
       });
 
@@ -391,19 +400,63 @@ export default function DashboardPage() {
 
             {/* Quick Actions */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
-              <button
-                onClick={() => router.push('/jobs/editing')}
-                className="group relative bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-xl p-5 sm:p-8 text-white font-semibold text-sm sm:text-lg hover:shadow-2xl hover:shadow-emerald-900/50 transition-all duration-300 overflow-hidden active:scale-95"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div className="relative z-10 flex items-center justify-between">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    <Plus className="w-5 h-5 sm:w-6 sm:h-6" />
-                    <span>Add New Job</span>
+              <div className="relative">
+                <button
+                  onClick={() => setShowAddJobMenu(!showAddJobMenu)}
+                  className="w-full group relative bg-gradient-to-br from-emerald-600 to-emerald-700 rounded-xl p-5 sm:p-8 text-white font-semibold text-sm sm:text-lg hover:shadow-2xl hover:shadow-emerald-900/50 transition-all duration-300 overflow-hidden active:scale-95"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="relative z-10 flex items-center justify-between">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <Plus className="w-5 h-5 sm:w-6 sm:h-6" />
+                      <span>Add New Job</span>
+                    </div>
+                    <ChevronDown className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform ${showAddJobMenu ? 'rotate-180' : ''}`} />
                   </div>
-                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </button>
+                </button>
+                
+                {/* Dropdown Menu */}
+                {showAddJobMenu && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl z-50 overflow-hidden">
+                    <button
+                      onClick={() => { router.push('/jobs/editing'); setShowAddJobMenu(false); }}
+                      className="w-full px-4 py-3 flex items-center gap-3 hover:bg-purple-600/30 transition-colors text-left"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                        <Edit className="w-5 h-5 text-purple-400" />
+                      </div>
+                      <div>
+                        <p className="text-white font-semibold">Editing</p>
+                        <p className="text-slate-400 text-xs">Video/Photo editing jobs</p>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => { router.push('/jobs/exposing'); setShowAddJobMenu(false); }}
+                      className="w-full px-4 py-3 flex items-center gap-3 hover:bg-cyan-600/30 transition-colors text-left border-t border-slate-700"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+                        <Camera className="w-5 h-5 text-cyan-400" />
+                      </div>
+                      <div>
+                        <p className="text-white font-semibold">Exposing</p>
+                        <p className="text-slate-400 text-xs">Photography sessions</p>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => { router.push('/jobs/other'); setShowAddJobMenu(false); }}
+                      className="w-full px-4 py-3 flex items-center gap-3 hover:bg-orange-600/30 transition-colors text-left border-t border-slate-700"
+                    >
+                      <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                        <Briefcase className="w-5 h-5 text-orange-400" />
+                      </div>
+                      <div>
+                        <p className="text-white font-semibold">Other</p>
+                        <p className="text-slate-400 text-xs">Album, printing, etc.</p>
+                      </div>
+                    </button>
+                  </div>
+                )}
+              </div>
 
               <button
                 onClick={() => router.push('/reports')}
@@ -427,12 +480,16 @@ export default function DashboardPage() {
                 
                 {/* Mobile Card View */}
                 <div className="sm:hidden space-y-3">
-                  {jobs.slice(0, 5).map((job) => (
+                  {jobs.slice(0, 5).map((job) => {
+                    const dateStr = job.end_date || job.start_date;
+                    const [year, month, day] = dateStr.split('-').map(Number);
+                    const displayDate = new Date(year, month - 1, day).toLocaleDateString('en-IN');
+                    return (
                     <div key={job.id} className="bg-slate-800/50 backdrop-blur border border-slate-700/50 rounded-xl p-4">
                       <div className="flex justify-between items-start mb-2">
                         <div>
                           <p className="text-white font-semibold text-sm">{job.customer_name}</p>
-                          <p className="text-slate-400 text-xs">{new Date(job.start_date).toLocaleDateString('en-IN')}</p>
+                          <p className="text-slate-400 text-xs">{displayDate}</p>
                         </div>
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
                           job.category === 'EDITING' ? 'bg-purple-500/20 text-purple-400' :
@@ -453,7 +510,7 @@ export default function DashboardPage() {
                         </span>
                       </div>
                     </div>
-                  ))}
+                  )})}
                 </div>
                 
                 {/* Desktop Table View */}
@@ -462,7 +519,7 @@ export default function DashboardPage() {
                     <table className="w-full">
                       <thead className="bg-slate-700/30">
                         <tr>
-                          <th className="text-left py-3 px-4 text-xs font-medium text-slate-400">Date</th>
+                          <th className="text-left py-3 px-4 text-xs font-medium text-slate-400">Event End Date</th>
                           <th className="text-left py-3 px-4 text-xs font-medium text-slate-400">Customer</th>
                           <th className="text-left py-3 px-4 text-xs font-medium text-slate-400">Category</th>
                           <th className="text-right py-3 px-4 text-xs font-medium text-slate-400">Amount</th>
@@ -470,9 +527,13 @@ export default function DashboardPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-700/30">
-                        {jobs.slice(0, 5).map((job) => (
+                        {jobs.slice(0, 5).map((job) => {
+                          const dateStr = job.end_date || job.start_date;
+                          const [year, month, day] = dateStr.split('-').map(Number);
+                          const displayDate = new Date(year, month - 1, day).toLocaleDateString('en-IN');
+                          return (
                           <tr key={job.id} className="hover:bg-slate-700/20 transition-colors">
-                            <td className="py-3 px-4 text-sm text-white">{new Date(job.start_date).toLocaleDateString('en-IN')}</td>
+                            <td className="py-3 px-4 text-sm text-white">{displayDate}</td>
                             <td className="py-3 px-4 text-sm text-white">{job.customer_name}</td>
                             <td className="py-3 px-4">
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -494,7 +555,7 @@ export default function DashboardPage() {
                               </span>
                             </td>
                           </tr>
-                        ))}
+                        )})}
                       </tbody>
                     </table>
                   </div>

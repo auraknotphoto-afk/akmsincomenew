@@ -215,6 +215,22 @@ export const db = {
   async updateJob(id: string, updates: Partial<Job>): Promise<Job> {
     console.log('[DB] updateJob called for id:', id);
     
+    // Clean up empty strings - convert to null for Supabase
+    const cleanedUpdates: Partial<Job> = { ...updates };
+    const dateFields = ['start_date', 'end_date', 'payment_date'];
+    const stringFields = ['customer_phone', 'client_name', 'studio_name', 'event_type', 'event_location', 'session_type', 'exposure_type', 'expose_type', 'camera_type', 'type_of_work', 'notes'];
+    
+    for (const field of dateFields) {
+      if (field in cleanedUpdates && cleanedUpdates[field as keyof Job] === '') {
+        (cleanedUpdates as Record<string, unknown>)[field] = null;
+      }
+    }
+    for (const field of stringFields) {
+      if (field in cleanedUpdates && cleanedUpdates[field as keyof Job] === '') {
+        (cleanedUpdates as Record<string, unknown>)[field] = null;
+      }
+    }
+    
     // Always update localStorage first
     const jobs = getLocalJobs();
     const index = jobs.findIndex(j => j.id === id);
@@ -239,7 +255,7 @@ export const db = {
         console.log('[DB] Also updating in Supabase...');
         const { data, error } = await supabase
           .from('jobs')
-          .update({ ...updates, updated_at: new Date().toISOString() })
+          .update({ ...cleanedUpdates, updated_at: new Date().toISOString() })
           .eq('id', id)
           .select()
           .single();

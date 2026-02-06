@@ -82,8 +82,10 @@ function getMonthlyBreakdown(jobs: Job[]): { month: string; income: number; paid
   const monthlyData: Record<string, { income: number; paid: number; pending: number }> = {};
   
   jobs.forEach(job => {
-    const date = new Date(job.start_date);
-    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const dateStr = job.end_date || job.start_date;
+    if (!dateStr) return;
+    const [year, month] = dateStr.split('-').map(Number);
+    const monthKey = `${year}-${String(month).padStart(2, '0')}`;
     
     if (!monthlyData[monthKey]) {
       monthlyData[monthKey] = { income: 0, paid: 0, pending: 0 };
@@ -146,9 +148,17 @@ export default function ReportsPage() {
         end = range.end;
       }
       
-      // Filter by date range
+      // Helper function to parse date string as local time (not UTC)
+      const parseLocalDate = (dateStr: string) => {
+        if (!dateStr) return null;
+        const [year, month, day] = dateStr.split('-').map(Number);
+        return new Date(year, month - 1, day); // month is 0-indexed
+      };
+      
+      // Filter by event end_date (or start_date if end_date not available)
       const filtered = data.filter(job => {
-        const jobDate = new Date(job.start_date);
+        const jobDate = parseLocalDate(job.end_date || job.start_date);
+        if (!jobDate) return false;
         return jobDate >= start && jobDate <= end;
       });
       
