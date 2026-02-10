@@ -98,12 +98,45 @@ export default function MigratePage() {
     }
   };
 
+  const clearLocalData = () => {
+    if (!confirm('Delete local templates and jobs from this device? This cannot be undone.')) return;
+    try {
+      const keys = [
+        'akms_whatsapp_single',
+        'akms_whatsapp_consolidated',
+        'akms_job_status_templates',
+        'akms_payment_status_templates',
+        'akms_session_timeout',
+        'akms_biometric_registered',
+        'aura_knot_jobs'
+      ];
+      const cats = ['EDITING','EXPOSING','OTHER'];
+      for (const k of keys) {
+        localStorage.removeItem(k);
+        append(`Removed ${k}`);
+      }
+      for (const c of cats) {
+        localStorage.removeItem(`akms_whatsapp_single_${c}`);
+        localStorage.removeItem(`akms_job_status_templates_${c}`);
+        localStorage.removeItem(`akms_payment_status_templates_${c}`);
+        append(`Removed per-category keys for ${c}`);
+      }
+      setStatus('cleared');
+      append('Local data cleared');
+    } catch (e) {
+      append('Error clearing local data: ' + String(e));
+    }
+  };
+
   return (
     <div className="min-h-screen p-6">
       <h1 className="text-xl font-bold mb-4">Migrate Local Data to Server</h1>
       <p className="mb-4">Open this page on the device that has the data you want to migrate (e.g., your mobile). Press the button to upload local templates and jobs to the server.</p>
       <div className="space-y-3 mb-4">
         <button onClick={migrate} className="px-4 py-2 bg-blue-600 text-white rounded">Migrate Now</button>
+        {status === 'done' && (
+          <button onClick={clearLocalData} className="ml-2 px-4 py-2 bg-red-600 text-white rounded">Clear local data</button>
+        )}
         <div>State: {status}</div>
       </div>
 
