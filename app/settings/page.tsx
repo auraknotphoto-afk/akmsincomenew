@@ -272,9 +272,10 @@ export default function SettingsPage() {
     localStorage.setItem('akms_session_timeout', sessionTimeout.toString());
     localStorage.setItem('akms_job_status_templates', JSON.stringify(jobStatusTemplates));
     localStorage.setItem('akms_payment_status_templates', JSON.stringify(paymentStatusTemplates));
-    // save per-category templates
-    Object.entries(categoryTemplates).forEach(([cat, tpl]) => {
-      localStorage.setItem(`akms_whatsapp_single_${cat}`, tpl);
+    // save per-category single templates: keep them in sync with the global single template
+    (['EDITING','EXPOSING','OTHER'] as const).forEach((cat) => {
+      // overwrite any per-category single templates so saved template is used consistently
+      localStorage.setItem(`akms_whatsapp_single_${cat}`, singleTemplate);
     });
     // save per-category job/payment templates
     (['EDITING','EXPOSING','OTHER'] as const).forEach((cat) => {
