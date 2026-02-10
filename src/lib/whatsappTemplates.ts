@@ -34,6 +34,46 @@ Thank you for choosing us! 🙏
 - Aura Knot Photography`
 };
 
+// Default per-category single-job templates
+export const DEFAULT_CATEGORY_TEMPLATES: Record<'EDITING'|'EXPOSING'|'OTHER', string> = {
+  EDITING: `Hi {customer_name},
+
+This is a reminder from *Aura Knot Photography* about your {service_type} (Editing).
+
+{service_icon} Service: {service_type}
+📅 Date: {date}
+💰 Total Amount: Rs.{total_amount}
+⏳ *Balance Due: Rs.{balance}*
+
+Please complete payment or confirm details.
+
+Thank you! - Aura Knot Photography`,
+  EXPOSING: `Hi {customer_name},
+
+Reminder from *Aura Knot Photography* for your {service_type} (Exposing).
+
+{service_icon} Service: {service_type}
+📅 Date: {date}
+💰 Total Amount: Rs.{total_amount}
+⏳ *Balance Due: Rs.{balance}*
+
+Please get in touch to confirm the session.
+
+Thank you! - Aura Knot Photography`,
+  OTHER: `Hi {customer_name},
+
+This is about your payment for {service_type} (Other).
+
+{service_icon} Service: {service_type}
+📅 Date: {date}
+💰 Total Amount: Rs.{total_amount}
+⏳ *Balance Due: Rs.{balance}*
+
+Please complete the payment when convenient.
+
+Thank you! - Aura Knot Photography`
+};
+
 // Default Job Status Templates
 export const DEFAULT_JOB_STATUS_TEMPLATES = {
   PENDING: `Hi {customer_name},
@@ -133,6 +173,15 @@ export function getSingleTemplate(): string {
   return localStorage.getItem('akms_whatsapp_single') || DEFAULT_TEMPLATES.singleReminder;
 }
 
+// Get single template by category (prefers per-category key, falls back to generic single template)
+export function getSingleTemplateForCategory(category: string): string {
+  if (typeof window === 'undefined') return DEFAULT_TEMPLATES.singleReminder;
+  const catKey = `akms_whatsapp_single_${(category || 'OTHER').toString().toUpperCase()}`;
+  const perCat = localStorage.getItem(catKey);
+  if (perCat) return perCat;
+  return getSingleTemplate();
+}
+
 // Get the consolidated reminder template from localStorage or default
 export function getConsolidatedTemplate(): string {
   if (typeof window === 'undefined') return DEFAULT_TEMPLATES.consolidatedReminder;
@@ -177,7 +226,7 @@ export function formatSingleReminder(job: {
   amount_paid: number;
   category: string;
 }): string {
-  const template = getSingleTemplate();
+  const template = getSingleTemplateForCategory(job.category || 'OTHER');
   const balance = job.total_price - job.amount_paid;
   
   return template
