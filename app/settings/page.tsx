@@ -207,11 +207,23 @@ export default function SettingsPage() {
   const [jobStatusTemplates, setJobStatusTemplates] = useState(DEFAULT_JOB_STATUS_TEMPLATES);
   const [editingJobStatus, setEditingJobStatus] = useState<string | null>(null);
   const [expandedJobStatus, setExpandedJobStatus] = useState(false);
+  const [activeJobStatusCategory, setActiveJobStatusCategory] = useState<'EDITING'|'EXPOSING'|'OTHER'>('EDITING');
+  const [jobStatusByCategory, setJobStatusByCategory] = useState<Record<'EDITING'|'EXPOSING'|'OTHER', typeof DEFAULT_JOB_STATUS_TEMPLATES>>({
+    EDITING: DEFAULT_JOB_STATUS_TEMPLATES,
+    EXPOSING: DEFAULT_JOB_STATUS_TEMPLATES,
+    OTHER: DEFAULT_JOB_STATUS_TEMPLATES,
+  });
   
   // Payment Status Templates
   const [paymentStatusTemplates, setPaymentStatusTemplates] = useState(DEFAULT_PAYMENT_STATUS_TEMPLATES);
   const [editingPaymentStatus, setEditingPaymentStatus] = useState<string | null>(null);
   const [expandedPaymentStatus, setExpandedPaymentStatus] = useState(false);
+  const [activePaymentStatusCategory, setActivePaymentStatusCategory] = useState<'EDITING'|'EXPOSING'|'OTHER'>('EDITING');
+  const [paymentStatusByCategory, setPaymentStatusByCategory] = useState<Record<'EDITING'|'EXPOSING'|'OTHER', typeof DEFAULT_PAYMENT_STATUS_TEMPLATES>>({
+    EDITING: DEFAULT_PAYMENT_STATUS_TEMPLATES,
+    EXPOSING: DEFAULT_PAYMENT_STATUS_TEMPLATES,
+    OTHER: DEFAULT_PAYMENT_STATUS_TEMPLATES,
+  });
 
   // Load saved templates
   useEffect(() => {
@@ -233,6 +245,12 @@ export default function SettingsPage() {
       const k = `akms_whatsapp_single_${cat}`;
       const v = localStorage.getItem(k);
       if (v) setCategoryTemplates(prev => ({ ...prev, [cat]: v }));
+      const jk = `akms_job_status_templates_${cat}`;
+      const pv = `akms_payment_status_templates_${cat}`;
+      const jv = localStorage.getItem(jk);
+      const pvVal = localStorage.getItem(pv);
+      if (jv) setJobStatusByCategory(prev => ({ ...prev, [cat]: JSON.parse(jv) }));
+      if (pvVal) setPaymentStatusByCategory(prev => ({ ...prev, [cat]: JSON.parse(pvVal) }));
     });
   }, []);
 
@@ -246,6 +264,11 @@ export default function SettingsPage() {
     // save per-category templates
     Object.entries(categoryTemplates).forEach(([cat, tpl]) => {
       localStorage.setItem(`akms_whatsapp_single_${cat}`, tpl);
+    });
+    // save per-category job/payment templates
+    (['EDITING','EXPOSING','OTHER'] as const).forEach((cat) => {
+      localStorage.setItem(`akms_job_status_templates_${cat}`, JSON.stringify(jobStatusByCategory[cat]));
+      localStorage.setItem(`akms_payment_status_templates_${cat}`, JSON.stringify(paymentStatusByCategory[cat]));
     });
     
     setTimeout(() => {
@@ -529,52 +552,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Category-specific WhatsApp Templates */}
-        <div className="bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
-          <h2 className="text-base sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
-            <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
-            Category WhatsApp Templates
-          </h2>
-          <p className="text-slate-400 text-xs sm:text-sm mb-3">Customize single-job templates per category (Editing, Exposing, Other)</p>
-
-          <div className="flex gap-2 mb-3 sm:mb-4">
-            {(['EDITING','EXPOSING','OTHER'] as const).map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`px-3 py-2 rounded-lg font-medium text-xs sm:text-sm active:scale-95 ${activeCategory === cat ? 'bg-cyan-500 text-white' : 'bg-white/10 text-slate-300 hover:bg-white/20'}`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          <div>
-            <textarea
-              id={`categoryTemplate_${activeCategory}`}
-              value={categoryTemplates[activeCategory]}
-              onChange={(e) => setCategoryTemplates(prev => ({ ...prev, [activeCategory]: e.target.value }))}
-              rows={8}
-              className="w-full px-3 sm:px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-mono text-xs sm:text-sm touch-manipulation"
-            />
-
-            <div className="mt-2">
-              <p className="text-xs sm:text-sm text-slate-400 mb-2">Insert placeholder into category template:</p>
-              <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                {PLACEHOLDERS.map((ph) => (
-                  <button
-                    key={ph.key}
-                    onClick={() => insertCategoryPlaceholder(ph.key)}
-                    className="px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-[10px] sm:text-xs hover:bg-purple-500/30 transition-colors active:scale-95"
-                    title={ph.desc}
-                  >
-                    {ph.key}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+        
 
         {/* Job Status Templates */}
         <div className="bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
@@ -592,6 +570,17 @@ export default function SettingsPage() {
           
           {expandedJobStatus && (
             <div className="mt-4 space-y-4">
+              <div className="flex gap-2 mb-3">
+                {(['EDITING','EXPOSING','OTHER'] as const).map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setActiveJobStatusCategory(cat)}
+                    className={`px-3 py-2 rounded-lg font-medium text-xs sm:text-sm active:scale-95 ${activeJobStatusCategory === cat ? 'bg-blue-500 text-white' : 'bg-white/10 text-slate-300 hover:bg-white/20'}`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
               {(['PENDING', 'IN_PROGRESS', 'COMPLETED'] as const).map((status) => (
                 <div key={status} className="bg-white/5 rounded-xl p-4 border border-white/10">
                   <div className="flex items-center justify-between mb-3">
@@ -603,7 +592,7 @@ export default function SettingsPage() {
                       {status.replace('_', ' ')}
                     </span>
                     <div className="flex gap-2">
-                      {editingJobStatus === status ? (
+                      {editingJobStatus === status && editingJobStatus && activeJobStatusCategory ? (
                         <>
                           <button
                             onClick={() => setEditingJobStatus(null)}
@@ -613,9 +602,12 @@ export default function SettingsPage() {
                           </button>
                           <button
                             onClick={() => {
-                              setJobStatusTemplates(prev => ({
+                              setJobStatusByCategory(prev => ({
                                 ...prev,
-                                [status]: DEFAULT_JOB_STATUS_TEMPLATES[status]
+                                [activeJobStatusCategory]: {
+                                  ...prev[activeJobStatusCategory],
+                                  [status]: DEFAULT_JOB_STATUS_TEMPLATES[status]
+                                }
                               }));
                               setEditingJobStatus(null);
                             }}
@@ -637,11 +629,14 @@ export default function SettingsPage() {
                   {editingJobStatus === status ? (
                     <>
                       <textarea
-                        id={`jobStatus_${status}`}
-                        value={jobStatusTemplates[status]}
-                        onChange={(e) => setJobStatusTemplates(prev => ({
+                        id={`jobStatus_${activeJobStatusCategory}_${status}`}
+                        value={jobStatusByCategory[activeJobStatusCategory][status]}
+                        onChange={(e) => setJobStatusByCategory(prev => ({
                           ...prev,
-                          [status]: e.target.value
+                          [activeJobStatusCategory]: {
+                            ...prev[activeJobStatusCategory],
+                            [status]: e.target.value
+                          }
                         }))}
                         rows={8}
                         className="w-full px-3 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs sm:text-sm"
@@ -652,7 +647,26 @@ export default function SettingsPage() {
                           {PLACEHOLDERS.map((ph) => (
                             <button
                               key={ph.key}
-                              onClick={() => insertJobPlaceholder(ph.key)}
+                              onClick={() => {
+                                const textarea = document.getElementById(`jobStatus_${activeJobStatusCategory}_${status}`) as HTMLTextAreaElement | null;
+                                if (!textarea) return;
+                                const start = textarea.selectionStart ?? textarea.value.length;
+                                const end = textarea.selectionEnd ?? start;
+                                const cur = jobStatusByCategory[activeJobStatusCategory][status];
+                                const nv = cur.substring(0, start) + ph.key + cur.substring(end);
+                                setJobStatusByCategory(prev => ({
+                                  ...prev,
+                                  [activeJobStatusCategory]: {
+                                    ...prev[activeJobStatusCategory],
+                                    [status]: nv
+                                  }
+                                }));
+                                setTimeout(() => {
+                                  textarea.focus();
+                                  const pos = start + ph.key.length;
+                                  textarea.selectionStart = textarea.selectionEnd = pos;
+                                }, 0);
+                              }}
                               className="px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-[10px] sm:text-xs hover:bg-purple-500/30 transition-colors active:scale-95"
                               title={ph.desc}
                             >
@@ -664,7 +678,7 @@ export default function SettingsPage() {
                     </>
                   ) : (
                     <pre className="text-slate-300 text-xs sm:text-sm whitespace-pre-wrap font-mono bg-black/20 rounded-lg p-3 max-h-32 overflow-y-auto">
-                      {jobStatusTemplates[status]}
+                      {jobStatusByCategory[activeJobStatusCategory][status]}
                     </pre>
                   )}
                 </div>
@@ -689,6 +703,17 @@ export default function SettingsPage() {
           
           {expandedPaymentStatus && (
             <div className="mt-4 space-y-4">
+              <div className="flex gap-2 mb-3">
+                {(['EDITING','EXPOSING','OTHER'] as const).map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setActivePaymentStatusCategory(cat)}
+                    className={`px-3 py-2 rounded-lg font-medium text-xs sm:text-sm active:scale-95 ${activePaymentStatusCategory === cat ? 'bg-yellow-500 text-white' : 'bg-white/10 text-slate-300 hover:bg-white/20'}`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
               {(['PENDING', 'PARTIAL', 'COMPLETED'] as const).map((status) => (
                 <div key={status} className="bg-white/5 rounded-xl p-4 border border-white/10">
                   <div className="flex items-center justify-between mb-3">
@@ -700,7 +725,7 @@ export default function SettingsPage() {
                       {status}
                     </span>
                     <div className="flex gap-2">
-                      {editingPaymentStatus === status ? (
+                      {editingPaymentStatus === status && editingPaymentStatus ? (
                         <>
                           <button
                             onClick={() => setEditingPaymentStatus(null)}
@@ -710,9 +735,12 @@ export default function SettingsPage() {
                           </button>
                           <button
                             onClick={() => {
-                              setPaymentStatusTemplates(prev => ({
+                              setPaymentStatusByCategory(prev => ({
                                 ...prev,
-                                [status]: DEFAULT_PAYMENT_STATUS_TEMPLATES[status]
+                                [activePaymentStatusCategory]: {
+                                  ...prev[activePaymentStatusCategory],
+                                  [status]: DEFAULT_PAYMENT_STATUS_TEMPLATES[status]
+                                }
                               }));
                               setEditingPaymentStatus(null);
                             }}
@@ -734,11 +762,14 @@ export default function SettingsPage() {
                   {editingPaymentStatus === status ? (
                     <>
                       <textarea
-                        id={`paymentStatus_${status}`}
-                        value={paymentStatusTemplates[status]}
-                        onChange={(e) => setPaymentStatusTemplates(prev => ({
+                        id={`paymentStatus_${activePaymentStatusCategory}_${status}`}
+                        value={paymentStatusByCategory[activePaymentStatusCategory][status]}
+                        onChange={(e) => setPaymentStatusByCategory(prev => ({
                           ...prev,
-                          [status]: e.target.value
+                          [activePaymentStatusCategory]: {
+                            ...prev[activePaymentStatusCategory],
+                            [status]: e.target.value
+                          }
                         }))}
                         rows={8}
                         className="w-full px-3 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-yellow-500 font-mono text-xs sm:text-sm"
@@ -749,7 +780,26 @@ export default function SettingsPage() {
                           {PLACEHOLDERS.map((ph) => (
                             <button
                               key={ph.key}
-                              onClick={() => insertPaymentPlaceholder(ph.key)}
+                              onClick={() => {
+                                const textarea = document.getElementById(`paymentStatus_${activePaymentStatusCategory}_${status}`) as HTMLTextAreaElement | null;
+                                if (!textarea) return;
+                                const start = textarea.selectionStart ?? textarea.value.length;
+                                const end = textarea.selectionEnd ?? start;
+                                const cur = paymentStatusByCategory[activePaymentStatusCategory][status];
+                                const nv = cur.substring(0, start) + ph.key + cur.substring(end);
+                                setPaymentStatusByCategory(prev => ({
+                                  ...prev,
+                                  [activePaymentStatusCategory]: {
+                                    ...prev[activePaymentStatusCategory],
+                                    [status]: nv
+                                  }
+                                }));
+                                setTimeout(() => {
+                                  textarea.focus();
+                                  const pos = start + ph.key.length;
+                                  textarea.selectionStart = textarea.selectionEnd = pos;
+                                }, 0);
+                              }}
                               className="px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-[10px] sm:text-xs hover:bg-purple-500/30 transition-colors active:scale-95"
                               title={ph.desc}
                             >
@@ -761,7 +811,7 @@ export default function SettingsPage() {
                     </>
                   ) : (
                     <pre className="text-slate-300 text-xs sm:text-sm whitespace-pre-wrap font-mono bg-black/20 rounded-lg p-3 max-h-32 overflow-y-auto">
-                      {paymentStatusTemplates[status]}
+                      {paymentStatusByCategory[activePaymentStatusCategory][status]}
                     </pre>
                   )}
                 </div>
