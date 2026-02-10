@@ -39,6 +39,46 @@ Thank you for choosing us! 🙏
 - Aura Knot Photography`
 };
 
+// Default per-category single-job templates
+const DEFAULT_CATEGORY_TEMPLATES: Record<'EDITING'|'EXPOSING'|'OTHER', string> = {
+  EDITING: `Hi {customer_name},
+
+This is a reminder from *Aura Knot Photography* about your {service_type} (Editing).
+
+{service_icon} Service: {service_type}
+📅 Date: {date}
+💰 Total Amount: Rs.{total_amount}
+⏳ *Balance Due: Rs.{balance}*
+
+Please complete payment or confirm details.
+
+Thank you! - Aura Knot Photography`,
+  EXPOSING: `Hi {customer_name},
+
+Reminder from *Aura Knot Photography* for your {service_type} (Exposing).
+
+{service_icon} Service: {service_type}
+📅 Date: {date}
+💰 Total Amount: Rs.{total_amount}
+⏳ *Balance Due: Rs.{balance}*
+
+Please get in touch to confirm the session.
+
+Thank you! - Aura Knot Photography`,
+  OTHER: `Hi {customer_name},
+
+This is about your payment for {service_type} (Other).
+
+{service_icon} Service: {service_type}
+📅 Date: {date}
+💰 Total Amount: Rs.{total_amount}
+⏳ *Balance Due: Rs.{balance}*
+
+Please complete the payment when convenient.
+
+Thank you! - Aura Knot Photography`
+};
+
 // Default Job Status Templates
 const DEFAULT_JOB_STATUS_TEMPLATES = {
   PENDING: `Hi {customer_name},
@@ -155,6 +195,8 @@ export default function SettingsPage() {
   
   const [singleTemplate, setSingleTemplate] = useState(DEFAULT_TEMPLATES.singleReminder);
   const [consolidatedTemplate, setConsolidatedTemplate] = useState(DEFAULT_TEMPLATES.consolidatedReminder);
+  const [categoryTemplates, setCategoryTemplates] = useState<Record<'EDITING'|'EXPOSING'|'OTHER', string>>(DEFAULT_CATEGORY_TEMPLATES);
+  const [activeCategory, setActiveCategory] = useState<'EDITING'|'EXPOSING'|'OTHER'>('EDITING');
   const [activeTab, setActiveTab] = useState<'single' | 'consolidated'>('single');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -186,6 +228,12 @@ export default function SettingsPage() {
     if (biometricReg) setBiometricRegistered(true);
     if (savedJobStatusTemplates) setJobStatusTemplates(JSON.parse(savedJobStatusTemplates));
     if (savedPaymentStatusTemplates) setPaymentStatusTemplates(JSON.parse(savedPaymentStatusTemplates));
+    // load per-category templates
+    (['EDITING','EXPOSING','OTHER'] as const).forEach((cat) => {
+      const k = `akms_whatsapp_single_${cat}`;
+      const v = localStorage.getItem(k);
+      if (v) setCategoryTemplates(prev => ({ ...prev, [cat]: v }));
+    });
   }, []);
 
   const handleSave = () => {
@@ -195,6 +243,10 @@ export default function SettingsPage() {
     localStorage.setItem('akms_session_timeout', sessionTimeout.toString());
     localStorage.setItem('akms_job_status_templates', JSON.stringify(jobStatusTemplates));
     localStorage.setItem('akms_payment_status_templates', JSON.stringify(paymentStatusTemplates));
+    // save per-category templates
+    Object.entries(categoryTemplates).forEach(([cat, tpl]) => {
+      localStorage.setItem(`akms_whatsapp_single_${cat}`, tpl);
+    });
     
     setTimeout(() => {
       setSaving(false);
@@ -250,6 +302,22 @@ export default function SettingsPage() {
     const currentValue = paymentStatusTemplates[key];
     const newValue = currentValue.substring(0, start) + placeholder + currentValue.substring(end);
     setPaymentStatusTemplates(prev => ({ ...prev, [key]: newValue } as typeof prev));
+    setTimeout(() => {
+      textarea.focus();
+      const pos = start + placeholder.length;
+      textarea.selectionStart = textarea.selectionEnd = pos;
+    }, 0);
+  };
+
+  const insertCategoryPlaceholder = (placeholder: string) => {
+    const key = activeCategory as keyof typeof categoryTemplates;
+    const textarea = document.getElementById(`categoryTemplate_${activeCategory}`) as HTMLTextAreaElement | null;
+    if (!textarea) return;
+    const start = textarea.selectionStart ?? textarea.value.length;
+    const end = textarea.selectionEnd ?? start;
+    const currentValue = categoryTemplates[key];
+    const newValue = currentValue.substring(0, start) + placeholder + currentValue.substring(end);
+    setCategoryTemplates(prev => ({ ...prev, [key]: newValue } as typeof prev));
     setTimeout(() => {
       textarea.focus();
       const pos = start + placeholder.length;
@@ -458,6 +526,53 @@ export default function SettingsPage() {
               <Save className="w-4 h-4" />
               {saving ? 'Saving...' : saved ? 'Saved!' : 'Save Template'}
             </button>
+          </div>
+        </div>
+
+        {/* Category-specific WhatsApp Templates */}
+        <div className="bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
+            <MessageCircle className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
+            Category WhatsApp Templates
+          </h2>
+          <p className="text-slate-400 text-xs sm:text-sm mb-3">Customize single-job templates per category (Editing, Exposing, Other)</p>
+
+          <div className="flex gap-2 mb-3 sm:mb-4">
+            {(['EDITING','EXPOSING','OTHER'] as const).map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className={`px-3 py-2 rounded-lg font-medium text-xs sm:text-sm active:scale-95 ${activeCategory === cat ? 'bg-cyan-500 text-white' : 'bg-white/10 text-slate-300 hover:bg-white/20'}`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+
+          <div>
+            <textarea
+              id={`categoryTemplate_${activeCategory}`}
+              value={categoryTemplates[activeCategory]}
+              onChange={(e) => setCategoryTemplates(prev => ({ ...prev, [activeCategory]: e.target.value }))}
+              rows={8}
+              className="w-full px-3 sm:px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-mono text-xs sm:text-sm touch-manipulation"
+            />
+
+            <div className="mt-2">
+              <p className="text-xs sm:text-sm text-slate-400 mb-2">Insert placeholder into category template:</p>
+              <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                {PLACEHOLDERS.map((ph) => (
+                  <button
+                    key={ph.key}
+                    onClick={() => insertCategoryPlaceholder(ph.key)}
+                    className="px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-[10px] sm:text-xs hover:bg-purple-500/30 transition-colors active:scale-95"
+                    title={ph.desc}
+                  >
+                    {ph.key}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
