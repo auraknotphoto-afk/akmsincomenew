@@ -263,6 +263,46 @@ export default function SettingsPage() {
       if (jv) setJobStatusByCategory(prev => ({ ...prev, [cat]: JSON.parse(jv) }));
       if (pvVal) setPaymentStatusByCategory(prev => ({ ...prev, [cat]: JSON.parse(pvVal) }));
     });
+    // Try to load server-side templates (if API available) and prefer server values
+    (async () => {
+      try {
+        const fetchJson = async (url: string) => {
+          const res = await fetch(url);
+          if (!res.ok) return null;
+          return await res.json();
+        };
+
+        // Single template (global)
+        const singleResp = await fetchJson('/api/templates?kind=single');
+        if (singleResp && singleResp.content) setSingleTemplate(typeof singleResp.content === 'string' ? singleResp.content : singleResp.content.template || singleResp.content);
+
+        // Consolidated
+        const consResp = await fetchJson('/api/templates?kind=consolidated');
+        if (consResp && consResp.content) setConsolidatedTemplate(typeof consResp.content === 'string' ? consResp.content : consResp.content.template || consResp.content);
+
+        // Job status all categories
+        const jobStatusResp = await fetchJson('/api/templates?kind=job_status');
+        if (jobStatusResp && jobStatusResp.templates) {
+          (['EDITING','EXPOSING','OTHER'] as const).forEach((cat) => {
+            const key = cat;
+            const val = jobStatusResp.templates[cat] || jobStatusResp.templates['GLOBAL'];
+            if (val) setJobStatusByCategory(prev => ({ ...prev, [cat]: val }));
+          });
+        }
+
+        // Payment status all categories
+        const payResp = await fetchJson('/api/templates?kind=payment_status');
+        if (payResp && payResp.templates) {
+          (['EDITING','EXPOSING','OTHER'] as const).forEach((cat) => {
+            const val = payResp.templates[cat] || payResp.templates['GLOBAL'];
+            if (val) setPaymentStatusByCategory(prev => ({ ...prev, [cat]: val }));
+          });
+        }
+      } catch (e) {
+        // ignore server errors, fall back to localStorage
+        console.warn('Could not load server templates:', e);
+      }
+    })();
   }, []);
 
   const handleSave = () => {
@@ -282,6 +322,27 @@ export default function SettingsPage() {
       localStorage.setItem(`akms_job_status_templates_${cat}`, JSON.stringify(jobStatusByCategory[cat]));
       localStorage.setItem(`akms_payment_status_templates_${cat}`, JSON.stringify(paymentStatusByCategory[cat]));
     });
+
+    // Also persist to server (best-effort)
+    (async () => {
+      try {
+        // Single & consolidated
+        await fetch('/api/templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'single', category: null, content: singleTemplate }) });
+        await fetch('/api/templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'consolidated', category: null, content: consolidatedTemplate }) });
+
+        // Job status per-category
+        await Promise.all((['EDITING','EXPOSING','OTHER'] as const).map((cat) =>
+          fetch('/api/templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'job_status', category: cat, content: jobStatusByCategory[cat] }) })
+        ));
+
+        // Payment status per-category
+        await Promise.all((['EDITING','EXPOSING','OTHER'] as const).map((cat) =>
+          fetch('/api/templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'payment_status', category: cat, content: paymentStatusByCategory[cat] }) })
+        ));
+      } catch (e) {
+        console.warn('Failed to persist templates to server:', e);
+      }
+    })();
     
     setTimeout(() => {
       setSaving(false);

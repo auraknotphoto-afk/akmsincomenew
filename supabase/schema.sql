@@ -350,3 +350,50 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- SELECT COUNT(*) as total, category FROM jobs GROUP BY category;
 -- SELECT * FROM audit_log ORDER BY created_at DESC LIMIT 10;
 -- SELECT * FROM rate_limits;
+
+-- =============================================
+-- WHATSAPP TEMPLATES TABLE (for cross-device sync)
+-- Stores per-user (or global) templates by kind and optional category
+-- kind: 'single' | 'consolidated' | 'job_status' | 'payment_status'
+-- content: JSONB for structured templates (job/payment status maps) or TEXT inside JSON
+-- =============================================
+CREATE TABLE IF NOT EXISTS whatsapp_templates (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  category VARCHAR(20),
+  kind VARCHAR(50) NOT NULL,
+  content JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_whatsapp_templates_kind ON whatsapp_templates(kind);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_templates_category ON whatsapp_templates(category);
+
+-- Ensure a single row per (user_id, kind, category)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'uniq_whatsapp_templates_user_kind_category'
+  ) THEN
+    ALTER TABLE whatsapp_templates ADD CONSTRAINT uniq_whatsapp_templates_user_kind_category UNIQUE (user_id, kind, category);
+  END IF;
+EXCEPTION WHEN others THEN
+  -- ignore if constraint exists or cannot be created in some environments
+  NULL;
+END$$;
+
+-- Trigger to update updated_at
+CREATE OR REPLACE FUNCTION update_whatsapp_templates_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS whatsapp_templates_updated_at ON whatsapp_templates;
+CREATE TRIGGER whatsapp_templates_updated_at
+  BEFORE UPDATE ON whatsapp_templates
+  FOR EACH ROW
+  EXECUTE FUNCTION update_whatsapp_templates_updated_at();
