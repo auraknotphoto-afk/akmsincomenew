@@ -51,6 +51,7 @@ export default function ExposingPage() {
     event_location: string;
     start_date: string;
     end_date: string;
+    estimated_due_date: string;
     session_type: string;
     exposure_type: string;
     expose_type: string;
@@ -68,6 +69,7 @@ export default function ExposingPage() {
     event_location: '',
     start_date: '',
     end_date: '',
+    estimated_due_date: '',
     session_type: 'FULL_SESSION',
     exposure_type: '',
     expose_type: '',
@@ -145,6 +147,7 @@ export default function ExposingPage() {
         event_location: '',
         start_date: '',
         end_date: '',
+        estimated_due_date: '',
         session_type: 'FULL_SESSION',
         exposure_type: '',
         expose_type: '',
@@ -191,6 +194,7 @@ export default function ExposingPage() {
       event_location: job.event_location || '',
       start_date: job.start_date,
       end_date: job.end_date || '',
+      estimated_due_date: (job as any).estimated_due_date || '',
       session_type: job.session_type || 'FULL_SESSION',
       exposure_type: job.exposure_type || '',
       expose_type: job.expose_type || '',
@@ -222,6 +226,7 @@ export default function ExposingPage() {
       event_location: '',
       start_date: '',
       end_date: '',
+      estimated_due_date: '',
       session_type: 'FULL_SESSION',
       exposure_type: '',
       expose_type: '',
@@ -448,9 +453,9 @@ Thank you for choosing us! 🙏
                   )}
                 </div>
 
-                {/* Client Name with Autofill */}
+                {/* Event Details (studio name shown, but labeled as Event Details) */}
                 <div className="relative">
-                  <label className="block text-xs sm:text-sm font-medium text-cyan-300 mb-1.5 sm:mb-2">Client Name</label>
+                  <label className="block text-xs sm:text-sm font-medium text-cyan-300 mb-1.5 sm:mb-2">Event Details</label>
                   <div className="relative">
                     <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
                     <input 
@@ -461,7 +466,7 @@ Thank you for choosing us! 🙏
                       onFocus={() => setShowStudioSuggestions(true)}
                       onBlur={() => setTimeout(() => setShowStudioSuggestions(false), 200)}
                       className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-500 touch-manipulation" 
-                      placeholder="Client name"
+                      placeholder="Enter event details"
                       autoComplete="off"
                     />
                   </div>
@@ -540,6 +545,14 @@ Thank you for choosing us! 🙏
                   <div className="relative">
                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
                     <input type="date" value={formData.end_date} onChange={(e) => setFormData({ ...formData, end_date: e.target.value })} className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-cyan-500 touch-manipulation" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-cyan-300 mb-1.5 sm:mb-2">Estimated Due Date</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-cyan-400" />
+                    <input type="date" value={formData.estimated_due_date} onChange={(e) => setFormData({ ...formData, estimated_due_date: e.target.value })} className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-cyan-500 touch-manipulation" />
                   </div>
                 </div>
 

@@ -35,6 +35,8 @@ export interface Job {
   event_location?: string;
   start_date: string;
   end_date?: string;
+  estimated_due_date?: string;
+  priority?: string;
   session_type?: string;
   exposure_type?: string;
   expose_type?: string;
@@ -43,6 +45,9 @@ export interface Job {
   duration_hours?: number;
   rate_per_hour?: number;
   type_of_work?: string;
+  additional_work_type?: string;
+  additional_work_custom?: string;
+  additional_work_rate?: number;
   total_price: number;
   amount_paid: number;
   payment_status: 'PENDING' | 'PARTIAL' | 'COMPLETED';
@@ -89,6 +94,18 @@ function generateId(): string {
 
 // Helper functions for database operations
 export const db = {
+  // Remove additional_work fields when the remote schema doesn't include them
+  _stripAdditionalFields(obj: Record<string, any>) {
+    const copy = { ...obj };
+    delete copy.additional_work_type;
+    delete copy.additional_work_custom;
+    delete copy.additional_work_rate;
+    // Some remote schemas may be missing the new estimated_due_date column
+    delete copy.estimated_due_date;
+    // Also allow stripping priority if remote schema misses it
+    delete copy.priority;
+    return copy;
+  },
   // Jobs
   async getJobs(userId: string, category?: string): Promise<Job[]> {
     console.log('[DB] getJobs called - userId:', userId, 'category:', category);
@@ -155,6 +172,8 @@ export const db = {
       ...job,
       start_date: job.start_date || today, // Default to today if empty
       end_date: job.end_date || null,
+      estimated_due_date: (job as any).estimated_due_date || null,
+      priority: (job as any).priority || null,
       payment_date: job.payment_date || null,
       customer_phone: job.customer_phone || null,
       client_name: job.client_name || null,
@@ -166,6 +185,9 @@ export const db = {
       expose_type: job.expose_type || null,
       camera_type: job.camera_type || null,
       type_of_work: job.type_of_work || null,
+      additional_work_type: (job as any).additional_work_type || null,
+      additional_work_custom: (job as any).additional_work_custom || null,
+      additional_work_rate: (job as any).additional_work_rate ?? null,
       notes: job.notes || null,
     };
     
@@ -188,7 +210,7 @@ export const db = {
     if (supabase) {
       try {
         console.log('[DB] Also saving to Supabase...');
-        const { data, error } = await supabase
+        const res = await supabase
           .from('jobs')
           .insert({
             ...cleanedJob,
@@ -196,11 +218,46 @@ export const db = {
             created_at: now,
             updated_at: now,
           })
-          .select()
-          .single();
-        
+          .select();
+
+        const data = (res && (res as any).data) || null;
+        const error = (res && (res as any).error) || null;
+
         if (error) {
           console.error('[DB] Supabase error (data still in localStorage):', error.message);
+          // If Supabase complains about missing columns, attempt to remove them and retry
+          const msg = (error && (error as any).message) || '';
+          if (/additional_work_/i.test(msg) || /Could not find the/i.test(msg) || /column/i.test(msg)) {
+            try {
+              // Start with stripping known optional fields
+              const sanitizedBase = (db as any)._stripAdditionalFields({
+                ...cleanedJob,
+                id: newJob.id,
+                created_at: now,
+                updated_at: now,
+              });
+
+              // Also strip any column names mentioned in the error message
+              const colMatches = Array.from(new Set((Array.from(msg.matchAll(/'([^']+)'/g)) as RegExpMatchArray[]).map(m => m[1])));
+              for (const col of colMatches) {
+                if (col in sanitizedBase) delete (sanitizedBase as Record<string, any>)[col];
+              }
+
+              const res2 = await supabase
+                .from('jobs')
+                .insert(sanitizedBase)
+                .select();
+              const data2 = (res2 && (res2 as any).data) || null;
+              const error2 = (res2 && (res2 as any).error) || null;
+              if (error2) {
+                console.error('[DB] Supabase retry error (still failed):', error2.message);
+              } else {
+                console.log('[DB] Also saved to Supabase successfully (sanitized payload)');
+              }
+            } catch (e2) {
+              console.error('[DB] Supabase retry connection error:', e2);
+            }
+          }
         } else {
           console.log('[DB] Also saved to Supabase successfully');
         }
@@ -217,8 +274,8 @@ export const db = {
     
     // Clean up empty strings - convert to null for Supabase
     const cleanedUpdates: Partial<Job> = { ...updates };
-    const dateFields = ['start_date', 'end_date', 'payment_date'];
-    const stringFields = ['customer_phone', 'client_name', 'studio_name', 'event_type', 'event_location', 'session_type', 'exposure_type', 'expose_type', 'camera_type', 'type_of_work', 'notes'];
+    const dateFields = ['start_date', 'end_date', 'payment_date', 'estimated_due_date'];
+    const stringFields = ['customer_phone', 'client_name', 'studio_name', 'event_type', 'event_location', 'session_type', 'exposure_type', 'expose_type', 'camera_type', 'type_of_work', 'additional_work_type', 'additional_work_custom', 'notes', 'priority'];
     
     for (const field of dateFields) {
       if (field in cleanedUpdates && cleanedUpdates[field as keyof Job] === '') {
@@ -253,17 +310,69 @@ export const db = {
     if (supabase) {
       try {
         console.log('[DB] Also updating in Supabase...');
-        const { data, error } = await supabase
+        const res = await supabase
           .from('jobs')
           .update({ ...cleanedUpdates, updated_at: new Date().toISOString() })
           .eq('id', id)
-          .select()
-          .single();
-        
+          .select();
+
+        const data = (res && (res as any).data) || null;
+        const error = (res && (res as any).error) || null;
+
         if (error) {
           console.error('[DB] Supabase update error:', error.message);
+          const msg = (error && (error as any).message) || '';
+          if (/additional_work_/i.test(msg) || /Could not find the/i.test(msg) || /column/i.test(msg)) {
+            try {
+              // Start with stripping known optional fields
+              const sanitized = (db as any)._stripAdditionalFields({ ...cleanedUpdates, updated_at: new Date().toISOString() });
+
+              // Remove any columns explicitly mentioned in the Supabase error message
+              const colMatches = Array.from(new Set((Array.from(msg.matchAll(/'([^']+)'/g)) as RegExpMatchArray[]).map(m => m[1])));
+              for (const col of colMatches) {
+                if (col in sanitized) delete (sanitized as Record<string, any>)[col];
+              }
+
+              const res2 = await supabase
+                .from('jobs')
+                .update(sanitized)
+                .eq('id', id)
+                .select();
+              const data2 = (res2 && (res2 as any).data) || null;
+              const error2 = (res2 && (res2 as any).error) || null;
+              if (error2) {
+                console.error('[DB] Supabase retry update error (still failed):', error2.message);
+                // As a last resort, try updating only the updated_at timestamp to keep localStorage and remote more in sync
+                try {
+                  const res3 = await supabase
+                    .from('jobs')
+                    .update({ updated_at: new Date().toISOString() })
+                    .eq('id', id)
+                    .select();
+                  const data3 = (res3 && (res3 as any).data) || null;
+                  const error3 = (res3 && (res3 as any).error) || null;
+                  if (error3) {
+                    console.error('[DB] Supabase final fallback update failed:', error3.message);
+                  } else {
+                    console.log('[DB] Supabase final fallback updated updated_at successfully');
+                    if (Array.isArray(data3)) return data3[0] as Job;
+                    return data3 as Job;
+                  }
+                } catch (e3) {
+                  console.error('[DB] Supabase final fallback connection error during update:', e3);
+                }
+              } else {
+                console.log('[DB] Also updated in Supabase successfully (sanitized payload)');
+                if (Array.isArray(data2)) return data2[0] as Job;
+                return data2 as Job;
+              }
+            } catch (e2) {
+              console.error('[DB] Supabase retry connection error during update:', e2);
+            }
+          }
         } else {
           console.log('[DB] Also updated in Supabase successfully');
+          if (Array.isArray(data)) return data[0] as Job;
           return data as Job;
         }
       } catch (e) {

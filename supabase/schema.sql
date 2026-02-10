@@ -64,6 +64,10 @@ CREATE TABLE IF NOT EXISTS jobs (
   duration_hours DECIMAL(6, 2),
   rate_per_hour DECIMAL(10, 2),
   client_name VARCHAR(255),
+  -- Additional Work fields
+  additional_work_type VARCHAR(255),
+  additional_work_custom TEXT,
+  additional_work_rate DECIMAL(10,2),
   
   -- Exposing Specific Fields
   studio_name VARCHAR(255),
@@ -86,6 +90,18 @@ CREATE INDEX IF NOT EXISTS idx_jobs_payment_status ON jobs(payment_status);
 CREATE INDEX IF NOT EXISTS idx_jobs_start_date ON jobs(start_date DESC);
 CREATE INDEX IF NOT EXISTS idx_jobs_created_at ON jobs(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
+
+-- =============================================
+-- Ensure additional_work columns exist for older deployments
+-- =============================================
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS additional_work_type VARCHAR(255);
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS additional_work_custom TEXT;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS additional_work_rate DECIMAL(10,2);
+
+-- Ensure estimated_due_date exists for deployments missing the column
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS estimated_due_date DATE;
+-- Ensure priority column exists for deployments missing it
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'NORMAL';
 
 -- =============================================
 -- FUNCTION: Auto-update updated_at timestamp
@@ -123,6 +139,9 @@ DROP POLICY IF EXISTS "Users can update own profile" ON users;
 DROP POLICY IF EXISTS "Allow user registration" ON users;
 DROP POLICY IF EXISTS "Service role can manage users" ON users;
 DROP POLICY IF EXISTS "Allow all users operations" ON users;
+-- Drop possible alternate policy names left by older runs
+DROP POLICY IF EXISTS service_role_manage_users ON users;
+DROP POLICY IF EXISTS "service_role_manage_users" ON users;
 
 CREATE POLICY "Allow all users operations" ON users
   FOR ALL

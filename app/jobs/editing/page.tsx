@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Plus, Camera, Calendar, User, IndianRupee, Trash2, Phone, Edit2, MessageCircle, Send, Building2, Clock } from 'lucide-react';
 import { db, Job } from '@/lib/supabase';
@@ -31,6 +31,8 @@ const CAMERA_OPTIONS = [
 export default function EditingPage() {
   const router = useRouter();
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [priorityFilter, setPriorityFilter] = useState<'ALL'|'LOW'|'NORMAL'|'HIGH'>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
   const [allJobs, setAllJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -43,6 +45,8 @@ export default function EditingPage() {
   const [showPhoneSuggestions, setShowPhoneSuggestions] = useState(false);
   const [customEventType, setCustomEventType] = useState('');
   const [showCustomEventInput, setShowCustomEventInput] = useState(false);
+  const [customAdditionalWork, setCustomAdditionalWork] = useState('');
+  const [showCustomAdditionalInput, setShowCustomAdditionalInput] = useState(false);
   
   const customerInputRef = useRef<HTMLInputElement>(null);
   const phoneInputRef = useRef<HTMLInputElement>(null);
@@ -59,6 +63,7 @@ export default function EditingPage() {
     event_type: string;
     start_date: string;
     end_date: string;
+    estimated_due_date: string;
     camera_type: string;
     duration_hours: number;
     rate_per_hour: number;
@@ -67,6 +72,9 @@ export default function EditingPage() {
     payment_status: 'PENDING' | 'PARTIAL' | 'COMPLETED';
     status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
     notes: string;
+    additional_work_type: string;
+    additional_work_custom: string;
+    additional_work_rate: number;
   }>({
     customer_name: '',
     customer_phone: '',
@@ -83,11 +91,31 @@ export default function EditingPage() {
     payment_status: 'PENDING',
     status: 'PENDING',
     notes: '',
+    additional_work_type: '',
+    additional_work_custom: '',
+    additional_work_rate: 0,
+    estimated_due_date: '',
   });
 
   useEffect(() => {
     fetchJobs();
   }, []);
+
+  const filteredJobs = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return jobs.filter(job => {
+      const p = ((job as any).priority || 'NORMAL');
+      if (priorityFilter !== 'ALL' && p !== priorityFilter) return false;
+      if (!q) return true;
+      return (
+        (job.customer_name || '').toLowerCase().includes(q) ||
+        ((job as any).client_name || '').toLowerCase().includes(q) ||
+        ((job.event_type || '') as string).toLowerCase().includes(q) ||
+        ((job.type_of_work || '') as string).toLowerCase().includes(q) ||
+        ((job.studio_name || '') as string).toLowerCase().includes(q)
+      );
+    });
+  }, [jobs, priorityFilter, searchQuery]);
 
   // Build suggestions from ALL jobs across all categories
   useEffect(() => {
@@ -114,11 +142,10 @@ export default function EditingPage() {
 
   // Auto-calculate total price when duration or rate changes
   useEffect(() => {
-    if (formData.duration_hours > 0 && formData.rate_per_hour > 0) {
-      const calculatedPrice = Math.round(formData.duration_hours * formData.rate_per_hour);
-      setFormData(prev => ({ ...prev, total_price: calculatedPrice }));
-    }
-  }, [formData.duration_hours, formData.rate_per_hour]);
+    const additional = formData.additional_work_rate || 0;
+    const calculatedPrice = Math.round((formData.duration_hours || 0) * (formData.rate_per_hour || 0) + additional);
+    setFormData(prev => ({ ...prev, total_price: calculatedPrice }));
+  }, [formData.duration_hours, formData.rate_per_hour, formData.additional_work_rate]);
 
   async function fetchJobs() {
     try {
@@ -141,18 +168,23 @@ export default function EditingPage() {
     try {
       const eventType = showCustomEventInput ? customEventType : formData.event_type;
       
+      // Prepare payload including custom additional work if provided
+      const payload = {
+        ...formData,
+        event_type: eventType,
+        additional_work_type: showCustomAdditionalInput && formData.additional_work_custom ? formData.additional_work_custom : formData.additional_work_type,
+        additional_work_custom: formData.additional_work_custom,
+        additional_work_rate: formData.additional_work_rate,
+      } as any;
+
       if (editingJob) {
         // Update existing job
-        await db.updateJob(editingJob.id, {
-          ...formData,
-          event_type: eventType,
-        });
+        await db.updateJob(editingJob.id, payload);
         setEditingJob(null);
       } else {
         // Create new job
         const newJob = await db.createJob({
-          ...formData,
-          event_type: eventType,
+          ...payload,
           user_id: '00000000-0000-0000-0000-000000000001',
           category: 'EDITING',
         });
@@ -167,6 +199,7 @@ export default function EditingPage() {
         event_type: '',
         start_date: '',
         end_date: '',
+        estimated_due_date: '',
         camera_type: '',
         duration_hours: 0,
         rate_per_hour: 0,
@@ -175,6 +208,9 @@ export default function EditingPage() {
         payment_status: 'PENDING',
         status: 'PENDING',
         notes: '',
+        additional_work_type: '',
+        additional_work_custom: '',
+        additional_work_rate: 0,
       });
       setDurationHours(0);
       setDurationMinutes(0);
@@ -229,6 +265,10 @@ export default function EditingPage() {
       payment_status: job.payment_status as 'PENDING' | 'PARTIAL' | 'COMPLETED',
       status: job.status as 'PENDING' | 'IN_PROGRESS' | 'COMPLETED',
       notes: job.notes || '',
+      additional_work_type: (job as any).additional_work_type || '',
+      additional_work_custom: (job as any).additional_work_custom || '',
+      additional_work_rate: (job as any).additional_work_rate || 0,
+      estimated_due_date: (job as any).estimated_due_date || '',
     });
     if (isCustomEvent && job.event_type) {
       setShowCustomEventInput(true);
@@ -251,6 +291,7 @@ export default function EditingPage() {
       event_type: '',
       start_date: '',
       end_date: '',
+      estimated_due_date: '',
       camera_type: '',
       duration_hours: 0,
       rate_per_hour: 0,
@@ -259,11 +300,16 @@ export default function EditingPage() {
       payment_status: 'PENDING',
       status: 'PENDING',
       notes: '',
+      additional_work_type: '',
+      additional_work_custom: '',
+      additional_work_rate: 0,
     });
     setDurationHours(0);
     setDurationMinutes(0);
     setCustomEventType('');
     setShowCustomEventInput(false);
+    setCustomAdditionalWork('');
+    setShowCustomAdditionalInput(false);
     setShowForm(false);
   }
 
@@ -281,7 +327,7 @@ export default function EditingPage() {
       ...formData, 
       customer_name: customer.name, 
       customer_phone: customer.phone,
-      client_name: customer.client_name || '',
+      // do not auto-fill client_name (Event Details should be entered manually)
       studio_name: customer.studio_name || ''
     });
     setShowCustomerSuggestions(false);
@@ -456,9 +502,9 @@ export default function EditingPage() {
                   )}
                 </div>
 
-                {/* Client Name */}
+                {/* Event Details (no autosuggest) */}
                 <div>
-                  <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Client Name</label>
+                  <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Event Details</label>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
                     <input 
@@ -466,7 +512,7 @@ export default function EditingPage() {
                       value={formData.client_name} 
                       onChange={(e) => setFormData({ ...formData, client_name: e.target.value })} 
                       className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation" 
-                      placeholder="Enter client name"
+                      placeholder="Enter event details"
                     />
                   </div>
                 </div>
@@ -503,6 +549,71 @@ export default function EditingPage() {
                       </button>
                     </div>
                   )}
+                </div>
+                
+                {/* Additional Work: dropdown + rate side-by-side */}
+                <div className="sm:col-span-2 lg:col-span-1">
+                  <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Additional Work</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <div className="relative">
+                        <Plus className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-400" />
+                        <select
+                          value={formData.additional_work_type}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === 'Manual') {
+                              setShowCustomAdditionalInput(true);
+                              setFormData({ ...formData, additional_work_type: '' });
+                            } else {
+                              setShowCustomAdditionalInput(false);
+                              setCustomAdditionalWork('');
+                              setFormData({ ...formData, additional_work_type: val });
+                            }
+                          }}
+                          className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation"
+                        >
+                          <option value="" className="bg-slate-800">Select</option>
+                          <option value="Highlights" className="bg-slate-800">Highlights</option>
+                          <option value="Teaser" className="bg-slate-800">Teaser</option>
+                          <option value="Manual" className="bg-slate-800">Manual</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <div className="relative">
+                        <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-400" />
+                        <input
+                          type="number"
+                          min={0}
+                          value={formData.additional_work_rate}
+                          onChange={(e) => setFormData({ ...formData, additional_work_rate: parseFloat(e.target.value) || 0 })}
+                          className="w-full pl-10 pr-3 py-2.5 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-500"
+                          placeholder="Rate"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {showCustomAdditionalInput && (
+                    <div className="mt-2">
+                      <input
+                        type="text"
+                        value={customAdditionalWork}
+                        onChange={(e) => { setCustomAdditionalWork(e.target.value); setFormData({ ...formData, additional_work_custom: e.target.value }); }}
+                        className="w-full px-4 py-2.5 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        placeholder="Enter custom additional work"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Estimated Due Date</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
+                    <input type="date" value={formData.estimated_due_date} onChange={(e) => setFormData({ ...formData, estimated_due_date: e.target.value })} className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation" />
+                  </div>
                 </div>
 
                 <div>
@@ -686,6 +797,23 @@ export default function EditingPage() {
 
         {/* Jobs List */}
         <div className="space-y-3 sm:space-y-4 pb-24 sm:pb-0">
+          {/* Filters */}
+          <div className="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2 w-full sm:w-2/3">
+              <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search by customer, event, studio, or work" className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-purple-500" />
+              <button onClick={() => setSearchQuery('')} className="px-3 py-2 bg-white/10 text-white rounded-xl text-xs">Clear</button>
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-purple-300">Priority</label>
+              <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value as any)} className="px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm">
+                <option value="ALL">All</option>
+                <option value="HIGH">High</option>
+                <option value="NORMAL">Normal</option>
+                <option value="LOW">Low</option>
+              </select>
+            </div>
+          </div>
+          {/* filteredJobs computed above with useMemo */}
           {loading ? (
             <div className="text-center py-12">
               <div className="animate-spin w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full mx-auto"></div>
@@ -697,32 +825,48 @@ export default function EditingPage() {
               <h3 className="text-lg sm:text-xl font-bold text-white mt-4">No Editing Jobs Yet</h3>
               <p className="text-purple-300 text-sm sm:text-base mt-2">Click "Add Job" to create your first editing job</p>
             </div>
+          ) : filteredJobs.length === 0 ? (
+            <div className="text-center py-12 sm:py-16 bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl">
+              <h3 className="text-lg sm:text-xl font-bold text-white mt-4">No matching jobs</h3>
+              <p className="text-purple-300 text-sm sm:text-base mt-2">Try clearing filters or search to see jobs.</p>
+            </div>
           ) : (
-            jobs.map((job) => (
-              <div key={job.id} className="bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 hover:border-purple-500/50 transition-all active:scale-[0.99]">
-                <div className="flex flex-col gap-3 sm:gap-4">
+            filteredJobs.map((job) => (
+              <div key={job.id} className="bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-4 hover:border-purple-500/50 transition-all active:scale-[0.99]">
+                <div className="flex flex-col gap-2 sm:gap-3">
                   {/* Header Row */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2 flex-wrap">
-                        <h3 className="text-base sm:text-lg font-bold text-white truncate">{job.customer_name}</h3>
+                      <div className="flex items-center gap-2 sm:gap-3 mb-1 sm:mb-1.5 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full ${((job as any).priority === 'HIGH') ? 'bg-rose-400' : ((job as any).priority === 'LOW') ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                          <h3 className="text-base sm:text-lg font-bold text-white truncate">{job.customer_name}</h3>
+                        </div>
                         <span className={`px-2 py-0.5 sm:py-1 rounded-full text-[10px] sm:text-xs font-medium flex-shrink-0 ${job.status === 'COMPLETED' ? 'bg-emerald-500/20 text-emerald-400' : job.status === 'IN_PROGRESS' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'}`}>
                           {getStatusDisplay(job.status)}
                         </span>
                       </div>
-                      <div className="flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-purple-300">
-                        {job.event_type && <span>📸 {job.event_type}</span>}
-                        <span>📅 {new Date(job.start_date).toLocaleDateString('en-IN')}</span>
-                        {job.customer_phone && <span className="hidden sm:inline">📞 {job.customer_phone}</span>}
+
+                      <div className="flex flex-col gap-1 text-xs sm:text-sm">
+                        <div className="flex items-center gap-3 text-purple-300 truncate">
+                          <div className="truncate"><span className="font-semibold">Event:</span> <span className="ml-1">{job.event_type || '—'}</span></div>
+                          <div className="truncate"><span className="font-semibold">Details:</span> <span className="ml-1">{job.client_name || '—'}</span></div>
+                        </div>
+                        <div className="text-white font-bold text-sm">
+                          <span>Start: {new Date(job.start_date).toLocaleDateString('en-IN')}</span>
+                          {job.estimated_due_date && (
+                            <span className="ml-4">Due: {new Date(job.estimated_due_date).toLocaleDateString('en-IN')}</span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     
                     {/* Desktop Price Display */}
                     <div className="text-right hidden sm:block">
-                      <p className="text-xl sm:text-2xl font-bold text-white">₹{job.total_price.toLocaleString('en-IN')}</p>
-                      <p className={`text-xs sm:text-sm ${job.payment_status === 'COMPLETED' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                        {job.payment_status === 'COMPLETED' ? 'Paid' : `Pending: ₹${(job.total_price - job.amount_paid).toLocaleString('en-IN')}`}
-                      </p>
+                        <p className="text-xl sm:text-2xl font-bold text-white">₹{job.total_price.toLocaleString('en-IN')}</p>
+                        <p className={`text-xs sm:text-sm ${job.payment_status === 'COMPLETED' ? 'text-emerald-400' : 'text-amber-400'}`}>
+                          <span className="font-semibold">Balance (INR):</span> ₹{(job.total_price - job.amount_paid).toLocaleString('en-IN')}
+                        </p>
                     </div>
                   </div>
                   
@@ -731,7 +875,7 @@ export default function EditingPage() {
                     <div>
                       <p className="text-lg font-bold text-white">₹{job.total_price.toLocaleString('en-IN')}</p>
                       <p className={`text-xs ${job.payment_status === 'COMPLETED' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                        {job.payment_status === 'COMPLETED' ? 'Paid' : `Pending: ₹${(job.total_price - job.amount_paid).toLocaleString('en-IN')}`}
+                        <span className="font-semibold">Balance (INR):</span> ₹{(job.total_price - job.amount_paid).toLocaleString('en-IN')}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -750,6 +894,20 @@ export default function EditingPage() {
                           )}
                         </>
                       )}
+                      <select value={(job as any).priority || 'NORMAL'} onChange={async (e) => {
+                        const val = e.target.value;
+                        try {
+                          await db.updateJob(job.id, { priority: val });
+                          setJobs(prev => prev.map(p => p.id === job.id ? { ...p, priority: val } : p));
+                        } catch (err) {
+                          console.error('Error updating priority:', err);
+                          alert('Failed to update priority');
+                        }
+                      }} className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-white text-sm">
+                        <option value="LOW">Low</option>
+                        <option value="NORMAL">Normal</option>
+                        <option value="HIGH">High</option>
+                      </select>
                       <button onClick={() => handleEdit(job)} className="p-2 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors active:scale-95">
                         <Edit2 className="w-4 h-4" />
                       </button>
@@ -776,6 +934,20 @@ export default function EditingPage() {
                         )}
                       </div>
                     )}
+                    <select value={(job as any).priority || 'NORMAL'} onChange={async (e) => {
+                      const val = e.target.value;
+                      try {
+                        await db.updateJob(job.id, { priority: val });
+                        setJobs(prev => prev.map(p => p.id === job.id ? { ...p, priority: val } : p));
+                      } catch (err) {
+                        console.error('Error updating priority:', err);
+                        alert('Failed to update priority');
+                      }
+                    }} className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-white text-sm mr-2">
+                      <option value="LOW">Low</option>
+                      <option value="NORMAL">Normal</option>
+                      <option value="HIGH">High</option>
+                    </select>
                     <button onClick={() => handleEdit(job)} className="p-2 rounded-lg bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-colors">
                       <Edit2 className="w-5 h-5" />
                     </button>

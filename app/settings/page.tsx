@@ -138,6 +138,9 @@ const PLACEHOLDERS = [
   { key: '{service_type}', desc: 'Type of service/event' },
   { key: '{service_icon}', desc: 'Category icon (📷/🎬/📋)' },
   { key: '{date}', desc: 'Service date' },
+  { key: '{estimated_due_date}', desc: 'Estimated due date for payment or delivery' },
+  { key: '{priority}', desc: 'Job priority (LOW, NORMAL, HIGH)' },
+  { key: '{event_details}', desc: 'Event details (formerly client_name)' },
   { key: '{total_amount}', desc: 'Total price' },
   { key: '{amount_paid}', desc: 'Amount already paid' },
   { key: '{balance}', desc: 'Remaining balance' },
@@ -218,6 +221,40 @@ export default function SettingsPage() {
     } else {
       alert('Failed to enable biometric authentication. Please try again.');
     }
+  };
+
+  const insertJobPlaceholder = (placeholder: string) => {
+    if (!editingJobStatus) return;
+    const key = editingJobStatus as keyof typeof jobStatusTemplates;
+    const textarea = document.getElementById(`jobStatus_${editingJobStatus}`) as HTMLTextAreaElement | null;
+    if (!textarea) return;
+    const start = textarea.selectionStart ?? textarea.value.length;
+    const end = textarea.selectionEnd ?? start;
+    const currentValue = jobStatusTemplates[key];
+    const newValue = currentValue.substring(0, start) + placeholder + currentValue.substring(end);
+    setJobStatusTemplates(prev => ({ ...prev, [key]: newValue } as typeof prev));
+    setTimeout(() => {
+      textarea.focus();
+      const pos = start + placeholder.length;
+      textarea.selectionStart = textarea.selectionEnd = pos;
+    }, 0);
+  };
+
+  const insertPaymentPlaceholder = (placeholder: string) => {
+    if (!editingPaymentStatus) return;
+    const key = editingPaymentStatus as keyof typeof paymentStatusTemplates;
+    const textarea = document.getElementById(`paymentStatus_${editingPaymentStatus}`) as HTMLTextAreaElement | null;
+    if (!textarea) return;
+    const start = textarea.selectionStart ?? textarea.value.length;
+    const end = textarea.selectionEnd ?? start;
+    const currentValue = paymentStatusTemplates[key];
+    const newValue = currentValue.substring(0, start) + placeholder + currentValue.substring(end);
+    setPaymentStatusTemplates(prev => ({ ...prev, [key]: newValue } as typeof prev));
+    setTimeout(() => {
+      textarea.focus();
+      const pos = start + placeholder.length;
+      textarea.selectionStart = textarea.selectionEnd = pos;
+    }, 0);
   };
 
   const insertPlaceholder = (placeholder: string) => {
@@ -483,15 +520,33 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   {editingJobStatus === status ? (
-                    <textarea
-                      value={jobStatusTemplates[status]}
-                      onChange={(e) => setJobStatusTemplates(prev => ({
-                        ...prev,
-                        [status]: e.target.value
-                      }))}
-                      rows={8}
-                      className="w-full px-3 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs sm:text-sm"
-                    />
+                    <>
+                      <textarea
+                        id={`jobStatus_${status}`}
+                        value={jobStatusTemplates[status]}
+                        onChange={(e) => setJobStatusTemplates(prev => ({
+                          ...prev,
+                          [status]: e.target.value
+                        }))}
+                        rows={8}
+                        className="w-full px-3 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs sm:text-sm"
+                      />
+                      <div className="mt-2">
+                        <p className="text-xs sm:text-sm text-slate-400 mb-2">Insert placeholder into template:</p>
+                        <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                          {PLACEHOLDERS.map((ph) => (
+                            <button
+                              key={ph.key}
+                              onClick={() => insertJobPlaceholder(ph.key)}
+                              className="px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-[10px] sm:text-xs hover:bg-purple-500/30 transition-colors active:scale-95"
+                              title={ph.desc}
+                            >
+                              {ph.key}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
                   ) : (
                     <pre className="text-slate-300 text-xs sm:text-sm whitespace-pre-wrap font-mono bg-black/20 rounded-lg p-3 max-h-32 overflow-y-auto">
                       {jobStatusTemplates[status]}
@@ -562,15 +617,33 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   {editingPaymentStatus === status ? (
-                    <textarea
-                      value={paymentStatusTemplates[status]}
-                      onChange={(e) => setPaymentStatusTemplates(prev => ({
-                        ...prev,
-                        [status]: e.target.value
-                      }))}
-                      rows={8}
-                      className="w-full px-3 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-yellow-500 font-mono text-xs sm:text-sm"
-                    />
+                    <>
+                      <textarea
+                        id={`paymentStatus_${status}`}
+                        value={paymentStatusTemplates[status]}
+                        onChange={(e) => setPaymentStatusTemplates(prev => ({
+                          ...prev,
+                          [status]: e.target.value
+                        }))}
+                        rows={8}
+                        className="w-full px-3 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-yellow-500 font-mono text-xs sm:text-sm"
+                      />
+                      <div className="mt-2">
+                        <p className="text-xs sm:text-sm text-slate-400 mb-2">Insert placeholder into template:</p>
+                        <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                          {PLACEHOLDERS.map((ph) => (
+                            <button
+                              key={ph.key}
+                              onClick={() => insertPaymentPlaceholder(ph.key)}
+                              className="px-2 py-1 bg-purple-500/20 text-purple-300 rounded text-[10px] sm:text-xs hover:bg-purple-500/30 transition-colors active:scale-95"
+                              title={ph.desc}
+                            >
+                              {ph.key}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
                   ) : (
                     <pre className="text-slate-300 text-xs sm:text-sm whitespace-pre-wrap font-mono bg-black/20 rounded-lg p-3 max-h-32 overflow-y-auto">
                       {paymentStatusTemplates[status]}

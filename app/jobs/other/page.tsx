@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Plus, Calendar, User, IndianRupee, Trash2, Briefcase, Phone, Edit2, MessageCircle, Send } from 'lucide-react';
 import { db, Job } from '@/lib/supabase';
@@ -10,6 +10,8 @@ export default function OtherPage() {
   const router = useRouter();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [allJobs, setAllJobs] = useState<Job[]>([]);
+  const [priorityFilter, setPriorityFilter] = useState<'ALL' | 'LOW' | 'NORMAL' | 'HIGH'>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
@@ -29,6 +31,7 @@ export default function OtherPage() {
     type_of_work: string;
     start_date: string;
     end_date: string;
+    estimated_due_date: string;
     total_price: number;
     amount_paid: number;
     payment_status: 'PENDING' | 'PARTIAL' | 'COMPLETED';
@@ -40,6 +43,7 @@ export default function OtherPage() {
     type_of_work: '',
     start_date: '',
     end_date: '',
+    estimated_due_date: '',
     total_price: 0,
     amount_paid: 0,
     payment_status: 'PENDING',
@@ -102,6 +106,7 @@ export default function OtherPage() {
         type_of_work: '',
         start_date: '',
         end_date: '',
+        estimated_due_date: '',
         total_price: 0,
         amount_paid: 0,
         payment_status: 'PENDING',
@@ -132,6 +137,17 @@ export default function OtherPage() {
     }
   }
 
+  async function handlePriorityChange(id: string, newPriority: string) {
+    // optimistic UI
+    setJobs(prev => prev.map(j => j.id === id ? { ...j, priority: newPriority } : j));
+    try {
+      await db.updateJob(id, { priority: newPriority as any });
+      console.log('[UI] Priority updated for', id, newPriority);
+    } catch (e) {
+      console.error('Error updating priority:', e);
+    }
+  }
+
   function handleEdit(job: Job) {
     setFormData({
       customer_name: job.customer_name,
@@ -139,6 +155,7 @@ export default function OtherPage() {
       type_of_work: job.type_of_work || '',
       start_date: job.start_date,
       end_date: job.end_date || '',
+      estimated_due_date: (job as any).estimated_due_date || '',
       total_price: job.total_price,
       amount_paid: job.amount_paid,
       payment_status: job.payment_status,
@@ -157,6 +174,7 @@ export default function OtherPage() {
       type_of_work: '',
       start_date: '',
       end_date: '',
+      estimated_due_date: '',
       total_price: 0,
       amount_paid: 0,
       payment_status: 'PENDING',
@@ -260,6 +278,19 @@ Thank you for choosing us! 🙏
     ).length;
   };
 
+  const filteredJobs = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return jobs.filter(j => {
+      if (priorityFilter !== 'ALL') {
+        const p = (j.priority || 'NORMAL').toUpperCase();
+        if (p !== priorityFilter) return false;
+      }
+      if (!q) return true;
+      const hay = `${j.customer_name || ''} ${j.type_of_work || ''} ${j.notes || ''}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [jobs, priorityFilter, searchQuery]);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-orange-900 to-slate-900">
       {/* Header */}
@@ -285,6 +316,21 @@ Thank you for choosing us! 🙏
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
+        {/* Filters */}
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search customer, work or notes" className="w-full sm:w-80 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-orange-500" />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-orange-300 mr-1">Priority</label>
+            <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value as any)} className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none">
+              <option value="ALL">All</option>
+              <option value="LOW">Low</option>
+              <option value="NORMAL">Normal</option>
+              <option value="HIGH">High</option>
+            </select>
+          </div>
+        </div>
         {/* Form */}
         {showForm && (
           <div className="mb-6 sm:mb-8 bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
@@ -386,7 +432,15 @@ Thank you for choosing us! 🙏
                   </div>
                 </div>
 
-                <div>
+                  <div>
+                    <label className="block text-xs sm:text-sm font-medium text-orange-300 mb-1.5 sm:mb-2">Estimated Due Date</label>
+                    <div className="relative">
+                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-orange-400" />
+                      <input type="date" value={formData.estimated_due_date} onChange={(e) => setFormData({ ...formData, estimated_due_date: e.target.value })} className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-orange-500 touch-manipulation" />
+                    </div>
+                  </div>
+
+                  <div>
                   <label className="block text-xs sm:text-sm font-medium text-orange-300 mb-1.5 sm:mb-2">Total Price (INR) *</label>
                   <div className="relative">
                     <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-orange-400" />
@@ -501,31 +555,50 @@ Thank you for choosing us! 🙏
               <p className="text-orange-300 mt-2 text-sm sm:text-base">Click "Add Income" to create your first entry</p>
             </div>
           ) : (
-            jobs.map((job) => (
-              <div key={job.id} className="bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 hover:border-orange-500/50 transition-all active:scale-[0.99]">
+            filteredJobs.map((job) => (
+              <div key={job.id} className="bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-4 hover:border-orange-500/50 transition-all active:scale-[0.99]">
                 {/* Mobile View */}
                 <div className="sm:hidden">
-                  <div className="flex justify-between items-start mb-3">
+                  <div className="flex justify-between items-start mb-2">
                     <div>
-                      <h3 className="text-base font-bold text-white">{job.customer_name}</h3>
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${job.priority === 'HIGH' ? 'bg-red-500' : job.priority === 'LOW' ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                        <h3 className="text-base font-bold text-white">{job.customer_name}</h3>
+                      </div>
                       <p className="text-orange-300 text-xs mt-0.5">{job.type_of_work || 'Service'}</p>
                     </div>
                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${job.status === 'COMPLETED' ? 'bg-emerald-500/20 text-emerald-400' : job.status === 'IN_PROGRESS' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'}`}>
                       {getStatusDisplay(job.status)}
                     </span>
                   </div>
-                  <div className="flex flex-wrap gap-2 text-xs text-orange-300 mb-3">
-                    <span>📅 {new Date(job.start_date).toLocaleDateString('en-IN')}</span>
-                    {job.customer_phone && <span>📞 {job.customer_phone}</span>}
+
+                  <div className="flex flex-col gap-1 text-xs text-orange-300 mb-2">
+                    <div>Editing Start Date: <span className="font-medium text-white">{new Date(job.start_date).toLocaleDateString('en-IN')}</span></div>
+                    <div>Estimated Due Date: <span className="font-medium text-white">{job.estimated_due_date ? new Date(job.estimated_due_date).toLocaleDateString('en-IN') : '—'}</span></div>
+                    <div>Job Status: <span className="font-medium text-white">{getStatusDisplay(job.status)}</span></div>
                   </div>
+
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="text-lg font-bold text-white">₹{job.total_price.toLocaleString('en-IN')}</p>
+                      <p className="text-lg font-bold text-white">Total Price (INR)
+                        <span className="block text-2xl">₹{job.total_price.toLocaleString('en-IN')}</span>
+                      </p>
                       <p className={`text-xs ${job.payment_status === 'COMPLETED' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                        {job.payment_status === 'COMPLETED' ? 'Paid' : `Bal: ₹${(job.total_price - job.amount_paid).toLocaleString('en-IN')}`}
+                        Balance (INR): ₹{(job.total_price - job.amount_paid).toLocaleString('en-IN')}
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5">
+                      <select value={(job.priority || 'NORMAL')} onChange={(e) => handlePriorityChange(job.id, e.target.value)} className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-white text-sm">
+                        <option value="LOW">Low</option>
+                        <option value="NORMAL">Normal</option>
+                        <option value="HIGH">High</option>
+                      </select>
+                      <button onClick={() => handleEdit(job)} className="p-2 rounded-lg bg-orange-500/20 text-orange-400 active:scale-95 touch-manipulation">
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDelete(job.id)} className="p-2 rounded-lg bg-red-500/20 text-red-400 active:scale-95 touch-manipulation">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                       {job.customer_phone && (
                         <>
                           <button onClick={() => sendWhatsAppReminder(job)} className="p-2 rounded-lg bg-green-500/20 text-green-400 active:scale-95 touch-manipulation" title="Send WhatsApp">
@@ -541,36 +614,34 @@ Thank you for choosing us! 🙏
                           )}
                         </>
                       )}
-                      <button onClick={() => handleEdit(job)} className="p-2 rounded-lg bg-orange-500/20 text-orange-400 active:scale-95 touch-manipulation">
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button onClick={() => handleDelete(job.id)} className="p-2 rounded-lg bg-red-500/20 text-red-400 active:scale-95 touch-manipulation">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
                     </div>
                   </div>
                 </div>
                 
                 {/* Desktop View */}
-                <div className="hidden sm:flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="hidden sm:flex flex-col md:flex-row md:items-center justify-between gap-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-bold text-white">{job.customer_name}</h3>
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full ${job.priority === 'HIGH' ? 'bg-red-500' : job.priority === 'LOW' ? 'bg-emerald-400' : 'bg-amber-400'}`} />
+                        <h3 className="text-lg font-bold text-white">{job.customer_name}</h3>
+                      </div>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${job.status === 'COMPLETED' ? 'bg-emerald-500/20 text-emerald-400' : job.status === 'IN_PROGRESS' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'}`}>
                         {getStatusDisplay(job.status)}
                       </span>
                     </div>
                     <div className="flex flex-wrap gap-4 text-sm text-orange-300">
                       {job.type_of_work && <span>💼 {job.type_of_work}</span>}
-                      <span>📅 {new Date(job.start_date).toLocaleDateString('en-IN')}</span>
-                      {job.customer_phone && <span>📞 {job.customer_phone}</span>}
+                      <span>Editing Start Date: <span className="text-white font-medium">{new Date(job.start_date).toLocaleDateString('en-IN')}</span></span>
+                      <span>Estimated Due Date: <span className="text-white font-medium">{job.estimated_due_date ? new Date(job.estimated_due_date).toLocaleDateString('en-IN') : '—'}</span></span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-4">
                     <div className="text-right">
+                      <p className="text-sm text-orange-300">Total Price (INR)</p>
                       <p className="text-2xl font-bold text-white">₹{job.total_price.toLocaleString('en-IN')}</p>
                       <p className={`text-sm ${job.payment_status === 'COMPLETED' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                        {job.payment_status === 'COMPLETED' ? 'Paid' : `Pending: ₹${(job.total_price - job.amount_paid).toLocaleString('en-IN')}`}
+                        Balance (INR): ₹{(job.total_price - job.amount_paid).toLocaleString('en-IN')}
                       </p>
                     </div>
                     {job.customer_phone && (
@@ -588,6 +659,11 @@ Thank you for choosing us! 🙏
                         )}
                       </div>
                     )}
+                    <select value={(job.priority || 'NORMAL')} onChange={(e) => handlePriorityChange(job.id, e.target.value)} className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-white text-sm mr-2">
+                      <option value="LOW">Low</option>
+                      <option value="NORMAL">Normal</option>
+                      <option value="HIGH">High</option>
+                    </select>
                     <button onClick={() => handleEdit(job)} className="p-2 rounded-lg bg-orange-500/20 text-orange-400 hover:bg-orange-500/30 transition-colors active:scale-95">
                       <Edit2 className="w-5 h-5" />
                     </button>
