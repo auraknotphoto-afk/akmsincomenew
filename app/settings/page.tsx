@@ -238,31 +238,11 @@ export default function SettingsPage() {
 
   // Load saved templates
   useEffect(() => {
-    const savedSingle = localStorage.getItem('akms_whatsapp_single');
-    const savedConsolidated = localStorage.getItem('akms_whatsapp_consolidated');
+    // Load session timeout and biometric from localStorage; templates are stored server-side only
     const savedTimeout = localStorage.getItem('akms_session_timeout');
     const biometricReg = localStorage.getItem('akms_biometric_registered');
-    const savedJobStatusTemplates = localStorage.getItem('akms_job_status_templates');
-    const savedPaymentStatusTemplates = localStorage.getItem('akms_payment_status_templates');
-    
-    if (savedSingle) setSingleTemplate(savedSingle);
-    if (savedConsolidated) setConsolidatedTemplate(savedConsolidated);
     if (savedTimeout) setSessionTimeout(parseInt(savedTimeout));
     if (biometricReg) setBiometricRegistered(true);
-    if (savedJobStatusTemplates) setJobStatusTemplates(JSON.parse(savedJobStatusTemplates));
-    if (savedPaymentStatusTemplates) setPaymentStatusTemplates(JSON.parse(savedPaymentStatusTemplates));
-    // load per-category templates
-    (['EDITING','EXPOSING','OTHER'] as const).forEach((cat) => {
-      const k = `akms_whatsapp_single_${cat}`;
-      const v = localStorage.getItem(k);
-      if (v) setCategoryTemplates(prev => ({ ...prev, [cat]: v }));
-      const jk = `akms_job_status_templates_${cat}`;
-      const pv = `akms_payment_status_templates_${cat}`;
-      const jv = localStorage.getItem(jk);
-      const pvVal = localStorage.getItem(pv);
-      if (jv) setJobStatusByCategory(prev => ({ ...prev, [cat]: JSON.parse(jv) }));
-      if (pvVal) setPaymentStatusByCategory(prev => ({ ...prev, [cat]: JSON.parse(pvVal) }));
-    });
     // Try to load server-side templates (if API available) and prefer server values
     (async () => {
       try {
@@ -307,21 +287,9 @@ export default function SettingsPage() {
 
   const handleSave = () => {
     setSaving(true);
-    localStorage.setItem('akms_whatsapp_single', singleTemplate);
-    localStorage.setItem('akms_whatsapp_consolidated', consolidatedTemplate);
+    // Persist templates server-side only. Do not write to localStorage for templates.
     localStorage.setItem('akms_session_timeout', sessionTimeout.toString());
-    localStorage.setItem('akms_job_status_templates', JSON.stringify(jobStatusTemplates));
-    localStorage.setItem('akms_payment_status_templates', JSON.stringify(paymentStatusTemplates));
-    // save per-category single templates: keep them in sync with the global single template
-    (['EDITING','EXPOSING','OTHER'] as const).forEach((cat) => {
-      // overwrite any per-category single templates so saved template is used consistently
-      localStorage.setItem(`akms_whatsapp_single_${cat}`, singleTemplate);
-    });
-    // save per-category job/payment templates
-    (['EDITING','EXPOSING','OTHER'] as const).forEach((cat) => {
-      localStorage.setItem(`akms_job_status_templates_${cat}`, JSON.stringify(jobStatusByCategory[cat]));
-      localStorage.setItem(`akms_payment_status_templates_${cat}`, JSON.stringify(paymentStatusByCategory[cat]));
-    });
+    // job/payment templates kept in state; we'll persist them to server below
 
     // Also persist to server (best-effort)
     (async () => {

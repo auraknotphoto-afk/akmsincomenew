@@ -78,9 +78,11 @@ export async function POST(req: Request) {
       content,
     };
 
+    // Use kind+category as the conflict target so NULL user_id (global templates)
+    // will upsert correctly (Postgres treats NULLs as distinct for unique constraints).
     const { data, error } = await supabase
       .from('whatsapp_templates')
-      .upsert([payload], { onConflict: 'user_id,kind,category' })
+      .upsert([payload], { onConflict: 'kind,category' })
       .select();
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

@@ -504,24 +504,3 @@ export function formatPaymentStatusMessage(
     .replace(/{amount_paid}/g, job.amount_paid.toLocaleString('en-IN'))
     .replace(/{balance}/g, balance.toLocaleString('en-IN'));
 }
-
-// Explicit named exports to ensure bundlers see async helpers
-export {
-  fetchTemplate,
-  formatSingleReminderAsync,
-  formatConsolidatedReminderAsync,
-  formatJobStatusMessageAsync,
-  formatPaymentStatusMessageAsync,
-  getSingleTemplate,
-  getConsolidatedTemplate,
-  getJobStatusTemplates,
-  getJobStatusTemplatesForCategory,
-  getPaymentStatusTemplates,
-  getPaymentStatusTemplatesForCategory,
-  formatSingleReminder,
-  formatConsolidatedReminder,
-  formatJobStatusMessage,
-  formatPaymentStatusMessage,
-  generateWhatsAppUrl,
-  getServiceIcon
-};
