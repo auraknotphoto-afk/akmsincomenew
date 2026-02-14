@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Plus, Calendar, User, IndianRupee, Trash2, Briefcase, Phone, Edit2, MessageCircle, Send } from 'lucide-react';
 import { db, Job } from '@/lib/supabase';
-import { formatSingleReminderAsync, formatConsolidatedReminderAsync, generateWhatsAppUrl, formatJobStatusMessageAsync, formatPaymentStatusMessageAsync } from '@/lib/whatsappTemplates';
+import { formatSingleReminderAsync, formatConsolidatedReminderAsync, generateWhatsAppUrl, formatJobStatusMessageAsync, formatPaymentStatusMessage } from '@/lib/whatsappTemplates';
 
 export default function OtherPage() {
   const router = useRouter();
@@ -484,7 +484,7 @@ export default function OtherPage() {
                       <button
                         type="button"
                         onClick={async () => {
-                          const message = await formatPaymentStatusMessageAsync(formData.payment_status, {
+                          const message = formatPaymentStatusMessage(formData.payment_status, {
                             customer_name: formData.customer_name,
                             event_type: formData.type_of_work,
                             start_date: formData.start_date,

@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Plus, Camera, Calendar, User, IndianRupee, Trash2, Phone, Edit2, MessageCircle, Send, Building2, Clock } from 'lucide-react';
 import { db, Job } from '@/lib/supabase';
-import { formatSingleReminderAsync, formatConsolidatedReminderAsync, generateWhatsAppUrl, getServiceIcon, formatJobStatusMessageAsync, formatPaymentStatusMessageAsync } from '@/lib/whatsappTemplates';
+import { formatSingleReminderAsync, formatConsolidatedReminderAsync, generateWhatsAppUrl, getServiceIcon, formatJobStatusMessageAsync, formatPaymentStatusMessage } from '@/lib/whatsappTemplates';
 
 // Event types list - used across the app
 const EVENT_TYPES = [
@@ -764,7 +764,7 @@ export default function EditingPage() {
                       <button
                         type="button"
                         onClick={async () => {
-                          const message = await formatPaymentStatusMessageAsync(formData.payment_status, {
+                          const message = formatPaymentStatusMessage(formData.payment_status, {
                             customer_name: formData.customer_name,
                             event_type: formData.event_type,
                             start_date: formData.start_date,
