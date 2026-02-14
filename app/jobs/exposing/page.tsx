@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Plus, Camera, Calendar, User, IndianRupee, MapPin, Trash2, Building2, Phone, Edit2, MessageCircle, Send } from 'lucide-react';
 import { db, Job } from '@/lib/supabase';
-import { formatSingleReminder, formatConsolidatedReminder, generateWhatsAppUrl, formatJobStatusMessage, formatPaymentStatusMessage } from '@/lib/whatsappTemplates';
+import { formatSingleReminderAsync, formatConsolidatedReminderAsync, generateWhatsAppUrl, formatJobStatusMessageAsync, formatPaymentStatusMessageAsync } from '@/lib/whatsappTemplates';
 
 // Event types list - used across the app
 const EVENT_TYPES = [
@@ -281,66 +281,44 @@ export default function ExposingPage() {
     return status;
   };
 
-  const sendWhatsAppReminder = (job: Job) => {
-    const balance = job.total_price - job.amount_paid;
+  const sendWhatsAppReminder = async (job: Job) => {
     const phone = job.customer_phone?.replace(/[^0-9]/g, '') || '';
-    const message = `Hi ${job.customer_name},
-
-This is a friendly reminder from *Aura Knot Photography* regarding your pending payment.
-
-� Service: ${job.event_type || 'Exposing Session'}
-📅 Date: ${new Date(job.start_date).toLocaleDateString('en-IN')}
-💰 Total Amount: Rs.${job.total_price.toLocaleString('en-IN')}
-✅ Amount Paid: Rs.${job.amount_paid.toLocaleString('en-IN')}
-⏳ *Balance Due: Rs.${balance.toLocaleString('en-IN')}*
-
-Please complete the payment at your earliest convenience.
-
-Thank you for choosing us! 🙏
-
-- Aura Knot Photography`;
-    
-    const url = `https://wa.me/${phone.startsWith('91') ? phone : '91' + phone}?text=${encodeURIComponent(message)}`;
+    const message = await formatSingleReminderAsync({
+      customer_name: job.customer_name,
+      event_type: job.event_type,
+      start_date: job.start_date,
+      total_price: job.total_price,
+      amount_paid: job.amount_paid,
+      category: job.category
+    });
+    const url = generateWhatsAppUrl(phone, message);
     window.open(url, '_blank');
   };
 
-  const sendAllPendingReminder = (customerPhone: string) => {
-    const phone = customerPhone?.replace(/[^0-9]/g, '') || '';
-    const pendingJobs = allJobs.filter(j => 
-      j.customer_phone?.replace(/[^0-9]/g, '') === phone && 
-      j.payment_status !== 'COMPLETED'
-    );
-    
-    if (pendingJobs.length === 0) return;
-    
-    const customerName = pendingJobs[0].customer_name;
-    let totalPending = 0;
-    let jobsList = '';
-    
-    pendingJobs.forEach((job, index) => {
-      const balance = job.total_price - job.amount_paid;
-      totalPending += balance;
-      const category = job.category === 'EXPOSING' ? '📷 Exposing' : job.category === 'EDITING' ? '🎬 Editing' : '📋 Other';
-      const service = job.event_type || job.type_of_work || 'Service';
-      jobsList += `\n${index + 1}. ${category} - ${service}\n   📅 ${new Date(job.start_date).toLocaleDateString('en-IN')}\n   💰 Total: Rs.${job.total_price.toLocaleString('en-IN')} | Paid: Rs.${job.amount_paid.toLocaleString('en-IN')}\n   ⏳ Balance: Rs.${balance.toLocaleString('en-IN')}\n`;
-    });
-    
-    const message = `Hi ${customerName},
+  const sendAllPendingReminder = async (customerPhone: string) => {
+    try {
+      const phone = customerPhone?.replace(/[^0-9]/g, '') || '';
+      const pendingJobs = allJobs.filter(j => 
+        j.customer_phone?.replace(/[^0-9]/g, '') === phone && 
+        j.payment_status !== 'COMPLETED'
+      );
 
-This is a friendly reminder from *Aura Knot Photography* regarding your pending payments.
+      if (pendingJobs.length === 0) return;
 
-📝 *Pending Services (${pendingJobs.length}):*${jobsList}
-━━━━━━━━━━━━━━━
-💵 *TOTAL BALANCE DUE: Rs.${totalPending.toLocaleString('en-IN')}*
-
-Please complete the payment at your earliest convenience.
-
-Thank you for choosing us! 🙏
-
-- Aura Knot Photography`;
-    
-    const url = `https://wa.me/${phone.startsWith('91') ? phone : '91' + phone}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
+      const customerName = pendingJobs[0].customer_name;
+      const message = await formatConsolidatedReminderAsync(customerName, pendingJobs.map(job => ({
+        event_type: job.event_type,
+        service_type: job.type_of_work,
+        start_date: job.start_date,
+        total_price: job.total_price,
+        amount_paid: job.amount_paid,
+        category: job.category
+      })));
+      const url = generateWhatsAppUrl(phone, message);
+      window.open(url, '_blank');
+    } catch (e) {
+      console.error('Error sending consolidated reminder:', e);
+    }
   };
 
   const getPendingCountForCustomer = (customerPhone: string) => {
@@ -632,8 +610,8 @@ Thank you for choosing us! 🙏
                     {formData.customer_phone && (
                       <button
                         type="button"
-                        onClick={() => {
-                          const message = formatJobStatusMessage(formData.status, {
+                        onClick={async () => {
+                          const message = await formatJobStatusMessageAsync(formData.status, {
                             customer_name: formData.customer_name,
                             event_type: formData.event_type,
                             start_date: formData.start_date,
@@ -663,8 +641,8 @@ Thank you for choosing us! 🙏
                     {formData.customer_phone && (
                       <button
                         type="button"
-                        onClick={() => {
-                          const message = formatPaymentStatusMessage(formData.payment_status, {
+                        onClick={async () => {
+                          const message = await formatPaymentStatusMessageAsync(formData.payment_status, {
                             customer_name: formData.customer_name,
                             event_type: formData.event_type,
                             start_date: formData.start_date,

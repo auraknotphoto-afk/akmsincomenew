@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Plus, Camera, Calendar, User, IndianRupee, Trash2, Phone, Edit2, MessageCircle, Send, Building2, Clock } from 'lucide-react';
 import { db, Job } from '@/lib/supabase';
-import { formatSingleReminder, formatConsolidatedReminder, generateWhatsAppUrl, getServiceIcon, formatJobStatusMessage, formatPaymentStatusMessage } from '@/lib/whatsappTemplates';
+import { formatSingleReminderAsync, formatConsolidatedReminderAsync, generateWhatsAppUrl, getServiceIcon, formatJobStatusMessageAsync, formatPaymentStatusMessageAsync } from '@/lib/whatsappTemplates';
 
 // Event types list - used across the app
 const EVENT_TYPES = [
@@ -354,9 +354,9 @@ export default function EditingPage() {
     return status;
   };
 
-  const sendWhatsAppReminder = (job: Job) => {
+  const sendWhatsAppReminder = async (job: Job) => {
     const phone = job.customer_phone?.replace(/[^0-9]/g, '') || '';
-    const message = formatSingleReminder({
+    const message = await formatSingleReminderAsync({
       customer_name: job.customer_name,
       event_type: job.event_type,
       start_date: job.start_date,
@@ -369,27 +369,31 @@ export default function EditingPage() {
     window.open(url, '_blank');
   };
 
-  const sendAllPendingReminder = (customerPhone: string) => {
-    const phone = customerPhone?.replace(/[^0-9]/g, '') || '';
-    const pendingJobs = allJobs.filter(j => 
-      j.customer_phone?.replace(/[^0-9]/g, '') === phone && 
-      j.payment_status !== 'COMPLETED'
-    );
-    
-    if (pendingJobs.length === 0) return;
-    
-    const customerName = pendingJobs[0].customer_name;
-    const message = formatConsolidatedReminder(customerName, pendingJobs.map(job => ({
-      event_type: job.event_type,
-      service_type: job.type_of_work,
-      start_date: job.start_date,
-      total_price: job.total_price,
-      amount_paid: job.amount_paid,
-      category: job.category
-    })));
-    
-    const url = generateWhatsAppUrl(phone, message);
-    window.open(url, '_blank');
+  const sendAllPendingReminder = async (customerPhone: string) => {
+    try {
+      const phone = customerPhone?.replace(/[^0-9]/g, '') || '';
+      const pendingJobs = allJobs.filter(j => 
+        j.customer_phone?.replace(/[^0-9]/g, '') === phone && 
+        j.payment_status !== 'COMPLETED'
+      );
+
+      if (pendingJobs.length === 0) return;
+
+      const customerName = pendingJobs[0].customer_name;
+      const message = await formatConsolidatedReminderAsync(customerName, pendingJobs.map(job => ({
+        event_type: job.event_type,
+        service_type: job.type_of_work,
+        start_date: job.start_date,
+        total_price: job.total_price,
+        amount_paid: job.amount_paid,
+        category: job.category
+      })));
+
+      const url = generateWhatsAppUrl(phone, message);
+      window.open(url, '_blank');
+    } catch (e) {
+      console.error('Error sending consolidated reminder:', e);
+    }
   };
 
   const getPendingCountForCustomer = (customerPhone: string) => {
@@ -728,8 +732,8 @@ export default function EditingPage() {
                     {formData.customer_phone && (
                       <button
                         type="button"
-                        onClick={() => {
-                          const message = formatJobStatusMessage(formData.status, {
+                        onClick={async () => {
+                          const message = await formatJobStatusMessageAsync(formData.status, {
                             customer_name: formData.customer_name,
                             event_type: formData.event_type,
                             start_date: formData.start_date,
@@ -759,8 +763,8 @@ export default function EditingPage() {
                     {formData.customer_phone && (
                       <button
                         type="button"
-                        onClick={() => {
-                          const message = formatPaymentStatusMessage(formData.payment_status, {
+                        onClick={async () => {
+                          const message = await formatPaymentStatusMessageAsync(formData.payment_status, {
                             customer_name: formData.customer_name,
                             event_type: formData.event_type,
                             start_date: formData.start_date,
