@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth-config';
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = req.headers.get('x-user-id');
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
     const { id } = await params;
 
     if (!userId) {
@@ -16,9 +19,7 @@ export async function GET(
       );
     }
 
-    const job = await prisma.job.findUnique({
-      where: { id },
-    });
+    const job = await prisma.job.findFirst({ where: { id, userId } });
 
     if (!job || job.userId !== userId) {
       return NextResponse.json(
@@ -42,7 +43,8 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = req.headers.get('x-user-id');
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
     const { id } = await params;
 
     if (!userId) {
@@ -54,8 +56,16 @@ export async function PUT(
 
     const body = await req.json();
 
+    const existing = await prisma.job.findFirst({ where: { id, userId } });
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Job not found' },
+        { status: 404 }
+      );
+    }
+
     const job = await prisma.job.update({
-      where: { id },
+      where: { id: existing.id },
       data: body,
     });
 
@@ -74,7 +84,8 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const userId = req.headers.get('x-user-id');
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
     const { id } = await params;
 
     if (!userId) {
@@ -84,9 +95,15 @@ export async function DELETE(
       );
     }
 
-    await prisma.job.delete({
-      where: { id },
-    });
+    const existing = await prisma.job.findFirst({ where: { id, userId } });
+    if (!existing) {
+      return NextResponse.json(
+        { error: 'Job not found' },
+        { status: 404 }
+      );
+    }
+
+    await prisma.job.delete({ where: { id: existing.id } });
 
     return NextResponse.json({ success: true });
   } catch (error) {

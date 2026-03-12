@@ -54,6 +54,8 @@ export interface Job {
   payment_date?: string;
   status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
   notes?: string;
+  is_deleted?: boolean;
+  deleted_at?: string | null;
 }
 
 export interface User {
@@ -63,28 +65,29 @@ export interface User {
   name?: string;
 }
 
-// LocalStorage fallback for demo mode
-const STORAGE_KEY = 'aura_knot_jobs';
-
-function getLocalJobs(): Job[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : [];
-  } catch {
-    return [];
-  }
+export interface WhatsAppTemplate {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  user_id: string;
+  category: 'EDITING' | 'EXPOSING' | 'OTHER';
+  template_type: 'JOB_STATUS' | 'PAYMENT_STATUS';
+  status_key: string;
+  template_text: string;
 }
 
-function saveLocalJobs(jobs: Job[]): void {
-  if (typeof window === 'undefined') return;
+// Legacy local cache key (kept only for one-time cleanup)
+const STORAGE_KEY = 'aura_knot_jobs';
+
+// One-time legacy cleanup so old local data won't appear again.
+if (typeof window !== 'undefined') {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(jobs));
-    // Verify save worked
-    const saved = localStorage.getItem(STORAGE_KEY);
-    console.log('[DB] localStorage save verified:', saved ? 'OK' : 'FAILED');
-  } catch (e) {
-    console.error('[DB] localStorage save error:', e);
+    localStorage.removeItem(STORAGE_KEY);
+    // Remove legacy auth keys from older demo/OTP flows.
+    localStorage.removeItem('auth_phone');
+    localStorage.removeItem('auth_token');
+  } catch {
+    // ignore
   }
 }
 
@@ -107,61 +110,114 @@ export const db = {
     return copy;
   },
   // Jobs
-  async getJobs(userId: string, category?: string): Promise<Job[]> {
+  async getJobs(
+    userId: string,
+    category?: string,
+    options?: { includeDeleted?: boolean }
+  ): Promise<Job[]> {
     console.log('[DB] getJobs called - userId:', userId, 'category:', category);
-    
-    // Always get localStorage data first
-    let localJobs = getLocalJobs();
-    console.log('[DB] localStorage has', localJobs.length, 'jobs');
-    
-    // Try to get from Supabase if configured
-    if (supabase) {
-      try {
-        console.log('[DB] Also checking Supabase...');
-        let query = supabase
+
+    if (!supabase) {
+      throw new Error('Supabase is not configured. Storage is Supabase-only.');
+    }
+
+    let query = supabase
+      .from('jobs')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (!options?.includeDeleted) {
+      query = query.eq('is_deleted', false);
+    }
+
+    if (category) {
+      query = query.eq('category', category);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      const code = (error as any)?.code;
+      // Column may not exist yet before soft-delete migration.
+      if (code === '42703' && !options?.includeDeleted) {
+        let fallbackQuery = supabase
           .from('jobs')
           .select('*')
           .eq('user_id', userId)
           .order('created_at', { ascending: false });
-        
         if (category) {
-          query = query.eq('category', category);
+          fallbackQuery = fallbackQuery.eq('category', category);
         }
-        
-        const { data, error } = await query;
-        if (error) {
-          console.warn('[DB] Supabase error:', error.message, '- using localStorage only');
-        } else {
-          console.log('[DB] Supabase returned', data?.length || 0, 'jobs');
-          // Merge Supabase data with localStorage data
-          const supabaseJobs = data || [];
-          const supabaseIds = new Set(supabaseJobs.map((j: Job) => j.id));
-          const localOnlyJobs = localJobs.filter(j => !supabaseIds.has(j.id));
-          
-          if (localOnlyJobs.length > 0) {
-            console.log('[DB] Found', localOnlyJobs.length, 'local-only jobs, merging...');
-          }
-          
-          // Combine: Supabase jobs + local-only jobs
-          const merged = [...supabaseJobs, ...localOnlyJobs];
-          
-          if (category) {
-            return merged.filter(j => j.category === category).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) as Job[];
-          }
-          return merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) as Job[];
-        }
-      } catch (e) {
-        console.warn('[DB] Supabase connection error:', e, '- using localStorage only');
+        const fallback = await fallbackQuery;
+        if (fallback.error) throw fallback.error;
+        return (fallback.data || []) as Job[];
       }
+      throw error;
     }
-    
-    // Return localStorage data only (Supabase failed or not configured)
-    console.log('[DB] Returning localStorage data only');
-    if (category) {
-      localJobs = localJobs.filter(j => j.category === category);
-    }
-    return localJobs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return (data || []) as Job[];
   },
+
+  // synchronise the browser cache with the remote database
+  async syncFromSupabase(userId: string): Promise<void> {
+    void userId;
+  },
+
+  // remove the cached job data from the current browser
+  clearLocalCache(): void {
+    if (typeof window === 'undefined') return;
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem('auth_phone');
+    localStorage.removeItem('auth_token');
+    console.log('[DB] localStorage cache cleared');
+  },
+
+  /**
+   * Remove *all* data for a given userID:
+   *  1. wipe the browser cache
+   *  2. delete all jobs belonging to that user from Supabase
+   *  3. (optional) delete the user record itself
+   *
+   * This is useful for resetting the demo state programmatically.
+   */
+  async clearAllData(userId: string, dropUser = false): Promise<void> {
+    // always clear local cache first
+    this.clearLocalCache();
+
+    if (!supabase) {
+      console.warn('[DB] clearAllData called but Supabase not configured');
+      return;
+    }
+
+    try {
+      console.log('[DB] deleting remote jobs for user', userId);
+      const { error: jobError } = await supabase
+        .from('jobs')
+        .delete()
+        .eq('user_id', userId);
+
+      if (jobError) {
+        console.error('[DB] error deleting remote jobs:', jobError.message);
+      } else {
+        console.log('[DB] remote jobs deleted');
+      }
+
+      if (dropUser) {
+        console.log('[DB] deleting user record', userId);
+        const { error: userError } = await supabase
+          .from('users')
+          .delete()
+          .eq('id', userId);
+        if (userError) {
+          console.error('[DB] error deleting user:', userError.message);
+        } else {
+          console.log('[DB] user record deleted');
+        }
+      }
+    } catch (e) {
+      console.error('[DB] clearAllData connection error:', e);
+    }
+  },
+
 
   async createJob(job: Omit<Job, 'id' | 'created_at' | 'updated_at'>): Promise<Job> {
     const now = new Date().toISOString();
@@ -198,74 +254,20 @@ export const db = {
       updated_at: now,
     } as Job;
 
-    console.log('[DB] createJob called with:', job.category, job.customer_name);
-
-    // Always save to localStorage first (ensures data is never lost)
-    const jobs = getLocalJobs();
-    jobs.unshift(newJob);
-    saveLocalJobs(jobs);
-    console.log('[DB] Saved to localStorage, total jobs:', jobs.length);
-
-    // Also try to save to Supabase if configured
-    if (supabase) {
-      try {
-        console.log('[DB] Also saving to Supabase...');
-        const res = await supabase
-          .from('jobs')
-          .insert({
-            ...cleanedJob,
-            id: newJob.id,
-            created_at: now,
-            updated_at: now,
-          })
-          .select();
-
-        const data = (res && (res as any).data) || null;
-        const error = (res && (res as any).error) || null;
-
-        if (error) {
-          console.error('[DB] Supabase error (data still in localStorage):', error.message);
-          // If Supabase complains about missing columns, attempt to remove them and retry
-          const msg = (error && (error as any).message) || '';
-          if (/additional_work_/i.test(msg) || /Could not find the/i.test(msg) || /column/i.test(msg)) {
-            try {
-              // Start with stripping known optional fields
-              const sanitizedBase = (db as any)._stripAdditionalFields({
-                ...cleanedJob,
-                id: newJob.id,
-                created_at: now,
-                updated_at: now,
-              });
-
-              // Also strip any column names mentioned in the error message
-              const colMatches = Array.from(new Set((Array.from(msg.matchAll(/'([^']+)'/g)) as RegExpMatchArray[]).map(m => m[1])));
-              for (const col of colMatches) {
-                if (col in sanitizedBase) delete (sanitizedBase as Record<string, any>)[col];
-              }
-
-              const res2 = await supabase
-                .from('jobs')
-                .insert(sanitizedBase)
-                .select();
-              const data2 = (res2 && (res2 as any).data) || null;
-              const error2 = (res2 && (res2 as any).error) || null;
-              if (error2) {
-                console.error('[DB] Supabase retry error (still failed):', error2.message);
-              } else {
-                console.log('[DB] Also saved to Supabase successfully (sanitized payload)');
-              }
-            } catch (e2) {
-              console.error('[DB] Supabase retry connection error:', e2);
-            }
-          }
-        } else {
-          console.log('[DB] Also saved to Supabase successfully');
-        }
-      } catch (e) {
-        console.error('[DB] Supabase connection error (data still in localStorage):', e);
-      }
+    if (!supabase) {
+      throw new Error('Supabase is not configured. Storage is Supabase-only.');
     }
-    
+
+    const { error } = await supabase
+      .from('jobs')
+      .insert({
+        ...cleanedJob,
+        id: newJob.id,
+        created_at: now,
+        updated_at: now,
+      });
+    if (error) throw error;
+
     return newJob;
   },
 
@@ -288,128 +290,231 @@ export const db = {
       }
     }
     
-    // Always update localStorage first
-    const jobs = getLocalJobs();
-    const index = jobs.findIndex(j => j.id === id);
-    let updatedJob: Job;
-    
-    if (index !== -1) {
-      jobs[index] = { ...jobs[index], ...updates, updated_at: new Date().toISOString() };
-      saveLocalJobs(jobs);
-      updatedJob = jobs[index];
-      console.log('[DB] Updated in localStorage');
-    } else {
-      // Job not in localStorage, create it there
-      updatedJob = { ...updates, id, updated_at: new Date().toISOString() } as Job;
-      jobs.push(updatedJob);
-      saveLocalJobs(jobs);
-      console.log('[DB] Added to localStorage (was not present)');
+    if (!supabase) {
+      throw new Error('Supabase is not configured. Storage is Supabase-only.');
     }
-    
-    // Also update in Supabase if configured
-    if (supabase) {
-      try {
-        console.log('[DB] Also updating in Supabase...');
-        const res = await supabase
-          .from('jobs')
-          .update({ ...cleanedUpdates, updated_at: new Date().toISOString() })
-          .eq('id', id)
-          .select();
 
-        const data = (res && (res as any).data) || null;
-        const error = (res && (res as any).error) || null;
+    const { data, error } = await supabase
+      .from('jobs')
+      .update({ ...cleanedUpdates, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
 
-        if (error) {
-          console.error('[DB] Supabase update error:', error.message);
-          const msg = (error && (error as any).message) || '';
-          if (/additional_work_/i.test(msg) || /Could not find the/i.test(msg) || /column/i.test(msg)) {
-            try {
-              // Start with stripping known optional fields
-              const sanitized = (db as any)._stripAdditionalFields({ ...cleanedUpdates, updated_at: new Date().toISOString() });
-
-              // Remove any columns explicitly mentioned in the Supabase error message
-              const colMatches = Array.from(new Set((Array.from(msg.matchAll(/'([^']+)'/g)) as RegExpMatchArray[]).map(m => m[1])));
-              for (const col of colMatches) {
-                if (col in sanitized) delete (sanitized as Record<string, any>)[col];
-              }
-
-              const res2 = await supabase
-                .from('jobs')
-                .update(sanitized)
-                .eq('id', id)
-                .select();
-              const data2 = (res2 && (res2 as any).data) || null;
-              const error2 = (res2 && (res2 as any).error) || null;
-              if (error2) {
-                console.error('[DB] Supabase retry update error (still failed):', error2.message);
-                // As a last resort, try updating only the updated_at timestamp to keep localStorage and remote more in sync
-                try {
-                  const res3 = await supabase
-                    .from('jobs')
-                    .update({ updated_at: new Date().toISOString() })
-                    .eq('id', id)
-                    .select();
-                  const data3 = (res3 && (res3 as any).data) || null;
-                  const error3 = (res3 && (res3 as any).error) || null;
-                  if (error3) {
-                    console.error('[DB] Supabase final fallback update failed:', error3.message);
-                  } else {
-                    console.log('[DB] Supabase final fallback updated updated_at successfully');
-                    if (Array.isArray(data3)) return data3[0] as Job;
-                    return data3 as Job;
-                  }
-                } catch (e3) {
-                  console.error('[DB] Supabase final fallback connection error during update:', e3);
-                }
-              } else {
-                console.log('[DB] Also updated in Supabase successfully (sanitized payload)');
-                if (Array.isArray(data2)) return data2[0] as Job;
-                return data2 as Job;
-              }
-            } catch (e2) {
-              console.error('[DB] Supabase retry connection error during update:', e2);
-            }
-          }
-        } else {
-          console.log('[DB] Also updated in Supabase successfully');
-          if (Array.isArray(data)) return data[0] as Job;
-          return data as Job;
-        }
-      } catch (e) {
-        console.error('[DB] Supabase connection error during update:', e);
-      }
-    }
-    
-    return updatedJob;
+    if (error) throw error;
+    return data as Job;
   },
 
   async deleteJob(id: string): Promise<void> {
     console.log('[DB] deleteJob called for id:', id);
     
-    // Always delete from localStorage first
-    const jobs = getLocalJobs();
-    const filtered = jobs.filter(j => j.id !== id);
-    saveLocalJobs(filtered);
-    console.log('[DB] Deleted from localStorage, remaining jobs:', filtered.length);
-    
-    // Also delete from Supabase if configured
-    if (supabase) {
-      try {
-        console.log('[DB] Also deleting from Supabase...');
-        const { error } = await supabase
-          .from('jobs')
-          .delete()
-          .eq('id', id);
-        
-        if (error) {
-          console.error('[DB] Supabase delete error:', error.message);
-        } else {
-          console.log('[DB] Also deleted from Supabase successfully');
-        }
-      } catch (e) {
-        console.error('[DB] Supabase connection error during delete:', e);
-      }
+    if (!supabase) {
+      throw new Error('Supabase is not configured. Storage is Supabase-only.');
     }
+
+    const { error } = await supabase
+      .from('jobs')
+      .update({
+        is_deleted: true,
+        deleted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id);
+    if (error) {
+      const code = (error as any)?.code;
+      if (code === '42703') {
+        throw new Error('Soft delete is not enabled yet. Run supabase/migrations/0004_soft_delete_jobs.sql');
+      }
+      throw error;
+    }
+  },
+
+  async restoreJob(id: string): Promise<void> {
+    if (!supabase) {
+      throw new Error('Supabase is not configured. Storage is Supabase-only.');
+    }
+
+    const { error } = await supabase
+      .from('jobs')
+      .update({
+        is_deleted: false,
+        deleted_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id);
+    if (error) throw error;
+  },
+
+  async hardDeleteJob(id: string): Promise<void> {
+    if (!supabase) {
+      throw new Error('Supabase is not configured. Storage is Supabase-only.');
+    }
+
+    const { error } = await supabase.from('jobs').delete().eq('id', id);
+    if (error) throw error;
+  },
+
+  async getDeletedJobs(userId: string, category?: string): Promise<Job[]> {
+    if (!supabase) {
+      throw new Error('Supabase is not configured. Storage is Supabase-only.');
+    }
+
+    let query = supabase
+      .from('jobs')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('is_deleted', true)
+      .order('deleted_at', { ascending: false });
+
+    if (category) {
+      query = query.eq('category', category);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data || []) as Job[];
+  },
+
+  // WhatsApp Templates
+  async getWhatsAppTemplates(
+    userId: string,
+    category?: 'EDITING' | 'EXPOSING' | 'OTHER'
+  ): Promise<WhatsAppTemplate[]> {
+    if (!supabase) {
+      throw new Error('Supabase is not configured. Storage is Supabase-only.');
+    }
+
+    let query = supabase
+      .from('whatsapp_templates')
+      .select('*')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false });
+
+    if (category) {
+      query = query.eq('category', category);
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      const code = (error as any)?.code;
+      // Missing table / insufficient privilege: return empty so app can still run with defaults.
+      if (code === '42P01' || code === '42501') {
+        console.warn('[DB] WhatsApp templates unavailable:', (error as any)?.message || error);
+        return [];
+      }
+      throw error;
+    }
+    return (data || []) as WhatsAppTemplate[];
+  },
+
+  async upsertWhatsAppTemplate(template: {
+    user_id: string;
+    category: 'EDITING' | 'EXPOSING' | 'OTHER';
+    template_type: 'JOB_STATUS' | 'PAYMENT_STATUS';
+    status_key: string;
+    template_text: string;
+  }): Promise<WhatsAppTemplate> {
+    if (!supabase) {
+      throw new Error('Supabase is not configured. Storage is Supabase-only.');
+    }
+
+    const now = new Date().toISOString();
+    const match = {
+      user_id: template.user_id,
+      category: template.category,
+      template_type: template.template_type,
+      status_key: template.status_key,
+    };
+
+    // First try to find existing row and update/insert manually.
+    const { data: existing, error: findError } = await supabase
+      .from('whatsapp_templates')
+      .select('id')
+      .match(match)
+      .maybeSingle();
+
+    if (findError) {
+      const code = (findError as any)?.code;
+      if (code === '42P01') {
+        throw new Error('whatsapp_templates table not found. Run supabase/migrations/0003_whatsapp_templates.sql');
+      }
+      if (code === '42501') {
+        throw new Error('Supabase permissions blocked template access. Apply template table grants/policies migration.');
+      }
+      throw new Error((findError as any)?.message || 'Failed to check existing template');
+    }
+
+    if (existing?.id) {
+      const { data, error } = await supabase
+        .from('whatsapp_templates')
+        .update({
+          template_text: template.template_text,
+          updated_at: now,
+        })
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      if (error) {
+        const code = (error as any)?.code;
+        if (code === '42501') {
+          throw new Error('Supabase permissions blocked template update.');
+        }
+        throw new Error((error as any)?.message || 'Failed to update template');
+      }
+
+      return data as WhatsAppTemplate;
+    }
+
+    const { data, error } = await supabase
+      .from('whatsapp_templates')
+      .insert({
+        ...template,
+        updated_at: now,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      const message = (error as any)?.message || '';
+      const details = (error as any)?.details || '';
+      // Backward-compat: older schemas require non-null "kind"/"content".
+      if (
+        message.includes('"kind"') ||
+        details.includes('"kind"') ||
+        message.includes('"content"') ||
+        details.includes('"content"')
+      ) {
+        const retry = await supabase
+          .from('whatsapp_templates')
+          .insert({
+            ...template,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            kind: template.template_type as any,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            content: template.template_text as any,
+            updated_at: now,
+          })
+          .select()
+          .single();
+
+        if (retry.error) {
+          throw new Error((retry.error as any)?.message || 'Failed to insert template');
+        }
+        return retry.data as WhatsAppTemplate;
+      }
+
+      const code = (error as any)?.code;
+      if (code === '42P01') {
+        throw new Error('whatsapp_templates table not found. Run supabase/migrations/0003_whatsapp_templates.sql');
+      }
+      if (code === '42501') {
+        throw new Error('Supabase permissions blocked template insert.');
+      }
+      throw new Error((error as any)?.message || 'Failed to insert template');
+    }
+
+    return data as WhatsAppTemplate;
   },
 
   // Dashboard summary
@@ -452,7 +557,7 @@ export const db = {
     return summary;
   },
 
-  // User (localStorage fallback for demo)
+  // User
   async getUser(phone: string): Promise<User | null> {
     if (supabase) {
       const { data, error } = await supabase
@@ -465,35 +570,21 @@ export const db = {
       return data as User | null;
     }
     
-    // Demo user
-    return {
-      id: '00000000-0000-0000-0000-000000000001',
-      created_at: new Date().toISOString(),
-      phone: phone,
-      name: 'Demo User',
-    };
+    return null;
   },
 
   async createUser(phone: string, name?: string): Promise<User> {
-    const newUser: User = {
-      id: generateId(),
-      created_at: new Date().toISOString(),
-      phone,
-      name,
-    };
-
-    if (supabase) {
-      const { data, error } = await supabase
-        .from('users')
-        .insert({ phone, name })
-        .select()
-        .single();
-      
-      if (error) throw error;
-      return data as User;
+    if (!supabase) {
+      throw new Error('Supabase is not configured. Storage is Supabase-only.');
     }
-    
-    return newUser;
+
+    const { data, error } = await supabase
+      .from('users')
+      .insert({ phone, name })
+      .select()
+      .single();
+    if (error) throw error;
+    return data as User;
   },
 
   // Check if using demo mode

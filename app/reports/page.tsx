@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Calendar, Download, FileSpreadsheet, FileText, TrendingUp, Filter, PieChart } from 'lucide-react';
 import { db, Job } from '@/lib/supabase';
+import { useAuth } from '../contexts/AuthContext';
 
 type TimePeriod = 'this_month' | 'last_month' | 'this_quarter' | 'last_quarter' | 'six_months' | 'this_year' | 'last_year' | 'all_time' | 'custom';
 
@@ -106,6 +107,7 @@ function getMonthlyBreakdown(jobs: Job[]): { month: string; income: number; paid
 
 export default function ReportsPage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('this_month');
@@ -128,14 +130,18 @@ export default function ReportsPage() {
   ];
 
   useEffect(() => {
-    fetchData();
-  }, [selectedPeriod, customDateRange, selectedCategory]);
+    if (!authLoading && !user?.id) {
+      router.push('/auth/login');
+      return;
+    }
+    if (user?.id) fetchData(user.id);
+  }, [selectedPeriod, customDateRange, selectedCategory, authLoading, user?.id, router]);
 
-  async function fetchData() {
+  async function fetchData(userId: string) {
     setLoading(true);
     try {
       const category = selectedCategory === 'ALL' ? undefined : selectedCategory;
-      const data = await db.getJobs('00000000-0000-0000-0000-000000000001', category as any);
+      const data = await db.getJobs(userId, category as any);
       
       // Get date range
       let start: Date, end: Date;

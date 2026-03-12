@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth-config';
+import { JobCategory } from '@prisma/client';
 
 export async function GET(req: NextRequest) {
   try {
-    const userId = req.headers.get('x-user-id');
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
 
     if (!userId) {
       return NextResponse.json(
@@ -12,8 +16,17 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    const categoryParam = req.nextUrl.searchParams.get('category');
+    const category =
+      categoryParam && Object.values(JobCategory).includes(categoryParam as JobCategory)
+        ? (categoryParam as JobCategory)
+        : undefined;
+
     const jobs = await prisma.job.findMany({
-      where: { userId },
+      where: {
+        userId,
+        ...(category ? { category } : {}),
+      },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -29,7 +42,8 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const userId = req.headers.get('x-user-id');
+    const session = await getServerSession(authOptions);
+    const userId = session?.user?.id;
 
     if (!userId) {
       return NextResponse.json(

@@ -1,10 +1,14 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Plus, Camera, Calendar, User, IndianRupee, Trash2, Phone, Edit2, MessageCircle, Send, Building2, Clock } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ArrowLeft, Plus, Camera, Calendar, User, IndianRupee, Trash2, Phone, Edit2, MessageCircle, Building2, Clock } from 'lucide-react';
 import { db, Job } from '@/lib/supabase';
-import { formatSingleReminderAsync, formatConsolidatedReminderAsync, generateWhatsAppUrl, getServiceIcon, formatJobStatusMessageAsync, formatPaymentStatusMessage } from '@/lib/whatsappTemplates';
+import { buildCustomerSummaryMessage, buildWhatsAppMessage, generateWhatsAppUrl } from '@/lib/whatsappTemplates';
+import { useAuth } from '../../contexts/AuthContext';
+async function formatConsolidatedReminderAsync() { return ''; }
+async function formatJobStatusMessageAsync() { return ''; }
+function formatPaymentStatusMessage() { return ''; }
 
 // Event types list - used across the app
 const EVENT_TYPES = [
@@ -30,6 +34,8 @@ const CAMERA_OPTIONS = [
 
 export default function EditingPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user, loading: authLoading } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [priorityFilter, setPriorityFilter] = useState<'ALL'|'LOW'|'NORMAL'|'HIGH'>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
@@ -38,6 +44,10 @@ export default function EditingPage() {
   const [showForm, setShowForm] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
+  const [whatsAppJob, setWhatsAppJob] = useState<Job | null>(null);
+  const [waUpdateType, setWaUpdateType] = useState<'job' | 'payment'>('job');
+  const [waJobStatus, setWaJobStatus] = useState<'PENDING' | 'IN_PROGRESS' | 'COMPLETED'>('PENDING');
+  const [waPaymentStatus, setWaPaymentStatus] = useState<'PENDING' | 'PARTIAL' | 'COMPLETED'>('PENDING');
   
   // Autofill suggestions state
   const [customerSuggestions, setCustomerSuggestions] = useState<{name: string, phone: string, client_name?: string, studio_name?: string}[]>([]);
@@ -98,8 +108,12 @@ export default function EditingPage() {
   });
 
   useEffect(() => {
-    fetchJobs();
-  }, []);
+    if (!authLoading && !user?.id) {
+      router.push('/auth/login');
+      return;
+    }
+    if (user?.id) fetchJobs(user.id);
+  }, [authLoading, user?.id, router]);
 
   const filteredJobs = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -147,12 +161,12 @@ export default function EditingPage() {
     setFormData(prev => ({ ...prev, total_price: calculatedPrice }));
   }, [formData.duration_hours, formData.rate_per_hour, formData.additional_work_rate]);
 
-  async function fetchJobs() {
+  async function fetchJobs(userId: string) {
     try {
-      const data = await db.getJobs('00000000-0000-0000-0000-000000000001', 'EDITING');
+      const data = await db.getJobs(userId, 'EDITING');
       setJobs(data);
       // Fetch all jobs for consolidated reminder
-      const allData = await db.getJobs('00000000-0000-0000-0000-000000000001');
+      const allData = await db.getJobs(userId);
       setAllJobs(allData);
     } catch (error) {
       console.error('Error fetching jobs:', error);
@@ -163,6 +177,10 @@ export default function EditingPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!user?.id) {
+      alert('Please sign in again.');
+      return;
+    }
     setFormLoading(true);
 
     try {
@@ -185,7 +203,7 @@ export default function EditingPage() {
         // Create new job
         const newJob = await db.createJob({
           ...payload,
-          user_id: '00000000-0000-0000-0000-000000000001',
+          user_id: user.id,
           category: 'EDITING',
         });
         console.log('Job created successfully:', newJob.id);
@@ -217,7 +235,7 @@ export default function EditingPage() {
       setCustomEventType('');
       setShowCustomEventInput(false);
       setShowForm(false);
-      fetchJobs();
+      fetchJobs(user.id);
     } catch (error) {
       console.error('Error creating job:', error);
       alert('Error saving job: ' + (error instanceof Error ? error.message : 'Unknown error'));
@@ -227,7 +245,8 @@ export default function EditingPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Are you sure you want to delete this job?')) return;
+    const typed = window.prompt('Type DELETE to move this entry to Trash.');
+    if (typed !== 'DELETE') return;
     try {
       console.log('[UI] Deleting job:', id);
       await db.deleteJob(id);
@@ -354,18 +373,63 @@ export default function EditingPage() {
     return status;
   };
 
-  const sendWhatsAppReminder = async (job: Job) => {
+  const getPaymentStatusDisplay = (status: string) => {
+    if (status === 'PENDING') return 'Pending';
+    if (status === 'PARTIAL') return 'Partial';
+    if (status === 'COMPLETED') return 'Completed';
+    return status;
+  };
+
+  const sendWhatsAppReminder = async (job: Job, updateType: 'job' | 'payment', selectedJobStatus: string, selectedPaymentStatus: string) => {
+    if (!user?.id) {
+      alert('Please sign in again.');
+      return;
+    }
     const phone = job.customer_phone?.replace(/[^0-9]/g, '') || '';
-    const message = await formatSingleReminderAsync({
-      customer_name: job.customer_name,
-      event_type: job.event_type,
-      start_date: job.start_date,
-      total_price: job.total_price,
-      amount_paid: job.amount_paid,
-      category: job.category
+    const message = await buildWhatsAppMessage({
+      userId: user.id,
+      category: 'EDITING',
+      updateType,
+      selectedJobStatus,
+      selectedPaymentStatus,
+      job,
     });
-    
     const url = generateWhatsAppUrl(phone, message);
+    if (!url) {
+      alert('Customer phone number is missing.');
+      return;
+    }
+    window.open(url, '_blank');
+  };
+
+  const openWhatsAppDialog = (job: Job) => {
+    setWhatsAppJob(job);
+    setWaUpdateType('job');
+    setWaJobStatus(job.status);
+    setWaPaymentStatus(job.payment_status);
+  };
+
+  const sendCustomerSummaryWhatsApp = async (group: { name: string; phone: string; jobs: Job[] }) => {
+    if (!user?.id) {
+      alert('Please sign in again.');
+      return;
+    }
+    const phone = (group.phone || '').replace(/[^0-9]/g, '');
+    if (!phone) {
+      alert('Customer phone number is missing.');
+      return;
+    }
+    const message = await buildCustomerSummaryMessage({
+      userId: user.id,
+      category: 'EDITING',
+      group,
+    });
+
+    const url = generateWhatsAppUrl(phone, message);
+    if (!url) {
+      alert('Customer phone number is invalid.');
+      return;
+    }
     window.open(url, '_blank');
   };
 
@@ -403,6 +467,30 @@ export default function EditingPage() {
       j.payment_status !== 'COMPLETED'
     ).length;
   };
+
+  const customerKeyForJob = (job: Job) =>
+    (job.customer_phone && job.customer_phone.trim()) ||
+    (job.customer_name && job.customer_name.trim()) ||
+    job.id;
+
+  const selectedCustomerKey = searchParams.get('customer');
+  const isCustomerView = !!selectedCustomerKey;
+
+  const customerGroups = filteredJobs.reduce((acc, job) => {
+    const key = customerKeyForJob(job);
+    const existing = acc.get(key);
+    if (!existing) {
+      acc.set(key, { key, name: job.customer_name, phone: job.customer_phone || '', jobs: [job] });
+    } else {
+      existing.jobs.push(job);
+    }
+    return acc;
+  }, new Map<string, { key: string; name: string; phone: string; jobs: Job[] }>());
+
+  const groupedCustomers = Array.from(customerGroups.values());
+  const customerJobs = isCustomerView
+    ? jobs.filter((j) => customerKeyForJob(j) === selectedCustomerKey)
+    : [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -729,7 +817,7 @@ export default function EditingPage() {
                       <option value="IN_PROGRESS" className="bg-slate-800">In Progress</option>
                       <option value="COMPLETED" className="bg-slate-800">Completed</option>
                     </select>
-                    {formData.customer_phone && (
+                    {false && (
                       <button
                         type="button"
                         onClick={async () => {
@@ -760,7 +848,7 @@ export default function EditingPage() {
                       <option value="PARTIAL" className="bg-slate-800">Partial</option>
                       <option value="COMPLETED" className="bg-slate-800">Completed</option>
                     </select>
-                    {formData.customer_phone && (
+                    {false && (
                       <button
                         type="button"
                         onClick={async () => {
@@ -802,21 +890,23 @@ export default function EditingPage() {
         {/* Jobs List */}
         <div className="space-y-3 sm:space-y-4 pb-24 sm:pb-0">
           {/* Filters */}
-          <div className="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center gap-2 w-full sm:w-2/3">
-              <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search by customer, event, studio, or work" className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-purple-500" />
-              <button onClick={() => setSearchQuery('')} className="px-3 py-2 bg-white/10 text-white rounded-xl text-xs">Clear</button>
+          {!isCustomerView && (
+            <div className="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-2 w-full sm:w-2/3">
+                <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search by customer, event, studio, or work" className="flex-1 px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-purple-500" />
+                <button onClick={() => setSearchQuery('')} className="px-3 py-2 bg-white/10 text-white rounded-xl text-xs">Clear</button>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-purple-300">Priority</label>
+                <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value as any)} className="px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm">
+                  <option value="ALL">All</option>
+                  <option value="HIGH">High</option>
+                  <option value="NORMAL">Normal</option>
+                  <option value="LOW">Low</option>
+                </select>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-purple-300">Priority</label>
-              <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value as any)} className="px-3 py-2 bg-white/5 border border-white/10 rounded-xl text-white text-sm">
-                <option value="ALL">All</option>
-                <option value="HIGH">High</option>
-                <option value="NORMAL">Normal</option>
-                <option value="LOW">Low</option>
-              </select>
-            </div>
-          </div>
+          )}
           {/* filteredJobs computed above with useMemo */}
           {loading ? (
             <div className="text-center py-12">
@@ -829,13 +919,82 @@ export default function EditingPage() {
               <h3 className="text-lg sm:text-xl font-bold text-white mt-4">No Editing Jobs Yet</h3>
               <p className="text-purple-300 text-sm sm:text-base mt-2">Click "Add Job" to create your first editing job</p>
             </div>
-          ) : filteredJobs.length === 0 ? (
+          ) : !isCustomerView && filteredJobs.length === 0 ? (
             <div className="text-center py-12 sm:py-16 bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl">
               <h3 className="text-lg sm:text-xl font-bold text-white mt-4">No matching jobs</h3>
               <p className="text-purple-300 text-sm sm:text-base mt-2">Try clearing filters or search to see jobs.</p>
             </div>
+          ) : !isCustomerView ? (
+            groupedCustomers.map((group) => {
+              const totalIncome = group.jobs.reduce((s, j) => s + j.total_price, 0);
+              const totalPaid = group.jobs.reduce((s, j) => s + j.amount_paid, 0);
+              return (
+                <div
+                  key={group.key}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => router.push(`/jobs/editing?customer=${encodeURIComponent(group.key)}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      router.push(`/jobs/editing?customer=${encodeURIComponent(group.key)}`);
+                    }
+                  }}
+                  className="w-full text-left bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 hover:border-purple-500/50 transition-all active:scale-[0.99] cursor-pointer"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-white">{group.name}</h3>
+                      <p className="text-purple-300 text-sm mt-1">
+                        {group.phone ? `Phone: ${group.phone}` : 'No phone'}
+                      </p>
+                      <p className="text-purple-300 text-sm mt-1">
+                        Entries: {group.jobs.length}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xl font-bold text-white">Rs.{totalIncome.toLocaleString('en-IN')}</p>
+                      <p className="text-sm text-amber-400">
+                        Pending: Rs.{(totalIncome - totalPaid).toLocaleString('en-IN')}
+                      </p>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          sendCustomerSummaryWhatsApp(group);
+                        }}
+                        className="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 text-xs"
+                        title="Send Pending Summary"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        WhatsApp
+                      </button>
+                      <p className="text-xs text-purple-300 mt-2">Tap to view all entries</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          ) : customerJobs.length === 0 ? (
+            <div className="text-center py-12 sm:py-16 bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl">
+              <h3 className="text-lg sm:text-xl font-bold text-white mt-4">No entries for this customer</h3>
+              <button
+                onClick={() => router.push('/jobs/editing')}
+                className="mt-4 px-4 py-2 rounded-xl bg-purple-600 text-white font-semibold"
+              >
+                Back to Customers
+              </button>
+            </div>
           ) : (
-            filteredJobs.map((job) => (
+            <>
+              <div className="mb-2">
+                <button
+                  onClick={() => router.push('/jobs/editing')}
+                  className="px-3 py-2 rounded-xl bg-white/10 text-white text-sm hover:bg-white/20"
+                >
+                  Back to Customers
+                </button>
+              </div>
+              {customerJobs.map((job) => (
               <div key={job.id} className="bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-4 hover:border-purple-500/50 transition-all active:scale-[0.99]">
                 <div className="flex flex-col gap-2 sm:gap-3">
                   {/* Header Row */}
@@ -883,21 +1042,9 @@ export default function EditingPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {job.customer_phone && (
-                        <>
-                          <button onClick={() => sendWhatsAppReminder(job)} className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors active:scale-95" title="Send WhatsApp">
-                            <MessageCircle className="w-4 h-4" />
-                          </button>
-                          {getPendingCountForCustomer(job.customer_phone || '') > 1 && (
-                            <button onClick={() => sendAllPendingReminder(job.customer_phone || '')} className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors relative active:scale-95" title="Send All Reminders">
-                              <Send className="w-4 h-4" />
-                              <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[10px] rounded-full w-3.5 h-3.5 flex items-center justify-center">
-                                {getPendingCountForCustomer(job.customer_phone || '')}
-                              </span>
-                            </button>
-                          )}
-                        </>
-                      )}
+                      <button onClick={() => openWhatsAppDialog(job)} className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors active:scale-95" title="WhatsApp">
+                        <MessageCircle className="w-4 h-4" />
+                      </button>
                       <select value={(job as any).priority || 'NORMAL'} onChange={async (e) => {
                         const val = e.target.value;
                         try {
@@ -923,21 +1070,9 @@ export default function EditingPage() {
 
                   {/* Desktop Actions */}
                   <div className="hidden sm:flex items-center justify-end gap-2">
-                    {job.customer_phone && (
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => sendWhatsAppReminder(job)} className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors" title="Send WhatsApp">
-                          <MessageCircle className="w-5 h-5" />
-                        </button>
-                        {getPendingCountForCustomer(job.customer_phone || '') > 1 && (
-                          <button onClick={() => sendAllPendingReminder(job.customer_phone || '')} className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors relative" title={`Send All ${getPendingCountForCustomer(job.customer_phone || '')} Pending Reminders`}>
-                            <Send className="w-5 h-5" />
-                            <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                              {getPendingCountForCustomer(job.customer_phone || '')}
-                            </span>
-                          </button>
-                        )}
-                      </div>
-                    )}
+                    <button onClick={() => openWhatsAppDialog(job)} className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors" title="WhatsApp">
+                      <MessageCircle className="w-5 h-5" />
+                    </button>
                     <select value={(job as any).priority || 'NORMAL'} onChange={async (e) => {
                       const val = e.target.value;
                       try {
@@ -961,10 +1096,77 @@ export default function EditingPage() {
                   </div>
                 </div>
               </div>
-            ))
+            ))}
+            </>
           )}
         </div>
       </div>
+
+      {whatsAppJob && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-slate-900 border border-white/20 rounded-2xl p-5">
+            <h3 className="text-white text-lg font-bold mb-4">Send WhatsApp Update</h3>
+            <p className="text-purple-300 text-sm mb-4">{whatsAppJob.customer_name}</p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-purple-300 mb-1">Update Type</label>
+                <select
+                  value={waUpdateType}
+                  onChange={(e) => setWaUpdateType(e.target.value as 'job' | 'payment')}
+                  className="w-full px-3 py-2 rounded-xl bg-white/10 border border-white/20 text-white"
+                >
+                  <option value="job" className="bg-slate-800">Job Status</option>
+                  <option value="payment" className="bg-slate-800">Payment Status</option>
+                </select>
+              </div>
+              {waUpdateType === 'job' ? (
+                <div>
+                  <label className="block text-xs text-purple-300 mb-1">Job Status</label>
+                  <select
+                    value={waJobStatus}
+                    onChange={(e) => setWaJobStatus(e.target.value as 'PENDING' | 'IN_PROGRESS' | 'COMPLETED')}
+                    className="w-full px-3 py-2 rounded-xl bg-white/10 border border-white/20 text-white"
+                  >
+                    <option value="PENDING" className="bg-slate-800">Yet to Start</option>
+                    <option value="IN_PROGRESS" className="bg-slate-800">In Progress</option>
+                    <option value="COMPLETED" className="bg-slate-800">Completed</option>
+                  </select>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs text-purple-300 mb-1">Payment Status</label>
+                  <select
+                    value={waPaymentStatus}
+                    onChange={(e) => setWaPaymentStatus(e.target.value as 'PENDING' | 'PARTIAL' | 'COMPLETED')}
+                    className="w-full px-3 py-2 rounded-xl bg-white/10 border border-white/20 text-white"
+                  >
+                    <option value="PENDING" className="bg-slate-800">Pending</option>
+                    <option value="PARTIAL" className="bg-slate-800">Partial</option>
+                    <option value="COMPLETED" className="bg-slate-800">Completed</option>
+                  </select>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2 mt-5">
+              <button
+                onClick={() => setWhatsAppJob(null)}
+                className="flex-1 py-2 rounded-xl bg-white/10 text-white"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  await sendWhatsAppReminder(whatsAppJob, waUpdateType, waJobStatus, waPaymentStatus);
+                  setWhatsAppJob(null);
+                }}
+                className="flex-1 py-2 rounded-xl bg-green-600 text-white font-semibold"
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

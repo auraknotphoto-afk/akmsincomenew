@@ -1,40 +1,36 @@
 import type { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { prisma } from '@/lib/prisma';
-import { verifyOTP } from '@/lib/auth-service';
+
+const appLoginUsername = process.env.APP_LOGIN_USERNAME || 'admin';
+const appLoginPassword = process.env.APP_LOGIN_PASSWORD || 'admin123';
+const appLoginUserId =
+  process.env.APP_LOGIN_USER_ID || '00000000-0000-0000-0000-000000000001';
 
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
-      id: 'otp-login',
-      name: 'Mobile OTP',
+      id: 'basic-login',
+      name: 'Username Password',
       credentials: {
-        phone: { label: 'Phone', type: 'text' },
-        otp: { label: 'OTP', type: 'text' },
+        username: { label: 'Username', type: 'text' },
+        password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        if (!credentials?.phone || !credentials?.otp) {
-          throw new Error('Phone and OTP required');
+        if (!credentials?.username || !credentials?.password) {
+          throw new Error('Username and password required');
         }
 
-        const result = await verifyOTP(credentials.phone, credentials.otp);
-
-        if (!result.success) {
-          throw new Error(result.message);
-        }
-
-        const user = await prisma.user.findUnique({
-          where: { phone: credentials.phone },
-        });
-
-        if (!user) {
-          throw new Error('User not found');
+        if (
+          credentials.username !== appLoginUsername ||
+          credentials.password !== appLoginPassword
+        ) {
+          throw new Error('Invalid username or password');
         }
 
         return {
-          id: user.id,
-          phone: user.phone,
-          name: user.name || 'Photography Pro',
+          id: appLoginUserId,
+          phone: credentials.username,
+          name: credentials.username,
         };
       },
     }),

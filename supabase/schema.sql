@@ -1,6 +1,11 @@
 -- =============================================
 -- AURA KNOT PHOTOGRAPHY - SUPABASE SCHEMA
 -- =============================================
+-- IMPORTANT:
+-- 1) Use a NEW empty SQL tab when running scripts.
+-- 2) Do NOT append ad-hoc DELETE/TRUNCATE commands to this file.
+-- 3) Do NOT run this repeatedly on production once initialized;
+--    use targeted migration files in supabase/migrations instead.
 -- Run this SQL in your Supabase SQL Editor
 -- Dashboard: https://supabase.com/dashboard/project/bnvbqlmdrpeybvpnhfoo/sql/new
 -- =============================================
@@ -55,6 +60,8 @@ CREATE TABLE IF NOT EXISTS jobs (
   payment_status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (payment_status IN ('PENDING', 'PARTIAL', 'COMPLETED')),
   payment_date DATE,
   status VARCHAR(20) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'IN_PROGRESS', 'COMPLETED')),
+  is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
+  deleted_at TIMESTAMPTZ,
   notes TEXT,
   
   -- Editing Specific Fields
@@ -81,14 +88,33 @@ CREATE TABLE IF NOT EXISTS jobs (
 );
 
 -- =============================================
+-- WHATSAPP TEMPLATES TABLE
+-- =============================================
+CREATE TABLE IF NOT EXISTS whatsapp_templates (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  category VARCHAR(20) NOT NULL CHECK (category IN ('EDITING', 'EXPOSING', 'OTHER')),
+  template_type VARCHAR(20) NOT NULL CHECK (template_type IN ('JOB_STATUS', 'PAYMENT_STATUS')),
+  status_key VARCHAR(30) NOT NULL,
+  template_text TEXT NOT NULL,
+  UNIQUE (user_id, category, template_type, status_key)
+);
+
+-- =============================================
 -- INDEXES FOR BETTER PERFORMANCE
 -- =============================================
 CREATE INDEX IF NOT EXISTS idx_jobs_user_id ON jobs(user_id);
 CREATE INDEX IF NOT EXISTS idx_jobs_category ON jobs(category);
 CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
 CREATE INDEX IF NOT EXISTS idx_jobs_payment_status ON jobs(payment_status);
+CREATE INDEX IF NOT EXISTS idx_jobs_is_deleted ON jobs(is_deleted);
+CREATE INDEX IF NOT EXISTS idx_jobs_deleted_at ON jobs(deleted_at DESC);
 CREATE INDEX IF NOT EXISTS idx_jobs_start_date ON jobs(start_date DESC);
 CREATE INDEX IF NOT EXISTS idx_jobs_created_at ON jobs(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_templates_user_id ON whatsapp_templates(user_id);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_templates_category ON whatsapp_templates(category);
 CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
 
 -- =============================================
@@ -97,6 +123,8 @@ CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS additional_work_type VARCHAR(255);
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS additional_work_custom TEXT;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS additional_work_rate DECIMAL(10,2);
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 
 -- Ensure estimated_due_date exists for deployments missing the column
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS estimated_due_date DATE;
@@ -121,19 +149,26 @@ CREATE TRIGGER update_jobs_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
+-- Create trigger for whatsapp_templates table
+DROP TRIGGER IF EXISTS update_whatsapp_templates_updated_at ON whatsapp_templates;
+CREATE TRIGGER update_whatsapp_templates_updated_at
+  BEFORE UPDATE ON whatsapp_templates
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
 -- =============================================
--- ROW LEVEL SECURITY (RLS) - DEMO MODE
+-- ROW LEVEL SECURITY (RLS) - PRODUCTION DEFAULTS
 -- =============================================
 -- Enable RLS on all tables
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE whatsapp_templates ENABLE ROW LEVEL SECURITY;
 
 -- =============================================
--- RLS POLICIES FOR DEMO MODE (ALLOWS ANONYMOUS ACCESS)
+-- RLS POLICIES (AUTHENTICATED USERS ONLY)
 -- =============================================
--- For production, replace these with authenticated-only policies
 
--- USERS TABLE - Allow all operations for demo
+-- USERS TABLE - Only authenticated users can read/update their own profile
 DROP POLICY IF EXISTS "Users can view own profile" ON users;
 DROP POLICY IF EXISTS "Users can update own profile" ON users;
 DROP POLICY IF EXISTS "Allow user registration" ON users;
@@ -143,12 +178,16 @@ DROP POLICY IF EXISTS "Allow all users operations" ON users;
 DROP POLICY IF EXISTS service_role_manage_users ON users;
 DROP POLICY IF EXISTS "service_role_manage_users" ON users;
 
-CREATE POLICY "Allow all users operations" ON users
-  FOR ALL
-  USING (true)
-  WITH CHECK (true);
+CREATE POLICY "Users can view own profile" ON users
+  FOR SELECT
+  USING (auth.uid() = id);
 
--- JOBS TABLE - Allow all operations for demo
+CREATE POLICY "Users can update own profile" ON users
+  FOR UPDATE
+  USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
+
+-- JOBS TABLE - Authenticated users can only access their own jobs
 DROP POLICY IF EXISTS "Users can view own jobs" ON jobs;
 DROP POLICY IF EXISTS "Users can create own jobs" ON jobs;
 DROP POLICY IF EXISTS "Users can update own jobs" ON jobs;
@@ -156,25 +195,51 @@ DROP POLICY IF EXISTS "Users can delete own jobs" ON jobs;
 DROP POLICY IF EXISTS "Service role can manage jobs" ON jobs;
 DROP POLICY IF EXISTS "Allow all jobs operations" ON jobs;
 
-CREATE POLICY "Allow all jobs operations" ON jobs
+CREATE POLICY "Users can view own jobs" ON jobs
+  FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can create own jobs" ON jobs
+  FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own jobs" ON jobs
+  FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own jobs" ON jobs
+  FOR DELETE
+  USING (auth.uid() = user_id);
+
+-- WHATSAPP TEMPLATES TABLE - App uses custom auth, allow app role access
+DROP POLICY IF EXISTS "Users can view own whatsapp templates" ON whatsapp_templates;
+DROP POLICY IF EXISTS "Users can create own whatsapp templates" ON whatsapp_templates;
+DROP POLICY IF EXISTS "Users can update own whatsapp templates" ON whatsapp_templates;
+DROP POLICY IF EXISTS "Users can delete own whatsapp templates" ON whatsapp_templates;
+DROP POLICY IF EXISTS "Allow all whatsapp templates operations" ON whatsapp_templates;
+
+CREATE POLICY "Allow all whatsapp templates operations" ON whatsapp_templates
   FOR ALL
   USING (true)
   WITH CHECK (true);
 
 -- =============================================
--- GRANT PERMISSIONS (DEMO MODE - Anonymous Access)
+-- GRANT PERMISSIONS (NO ANON WRITE ACCESS)
 -- =============================================
--- Grant access to anon for demo mode
-GRANT SELECT, INSERT, UPDATE, DELETE ON users TO anon;
-GRANT SELECT, INSERT, UPDATE, DELETE ON jobs TO anon;
+REVOKE ALL ON users FROM anon;
+REVOKE ALL ON jobs FROM anon;
 
 -- Grant full access to authenticated users
 GRANT SELECT, INSERT, UPDATE ON users TO authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON jobs TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON whatsapp_templates TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON whatsapp_templates TO anon;
 
 -- Grant to service_role for backend operations
 GRANT ALL ON users TO service_role;
 GRANT ALL ON jobs TO service_role;
+GRANT ALL ON whatsapp_templates TO service_role;
 
 -- =============================================
 -- SECURITY FUNCTIONS
@@ -350,50 +415,3 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- SELECT COUNT(*) as total, category FROM jobs GROUP BY category;
 -- SELECT * FROM audit_log ORDER BY created_at DESC LIMIT 10;
 -- SELECT * FROM rate_limits;
-
--- =============================================
--- WHATSAPP TEMPLATES TABLE (for cross-device sync)
--- Stores per-user (or global) templates by kind and optional category
--- kind: 'single' | 'consolidated' | 'job_status' | 'payment_status'
--- content: JSONB for structured templates (job/payment status maps) or TEXT inside JSON
--- =============================================
-CREATE TABLE IF NOT EXISTS whatsapp_templates (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  category VARCHAR(20),
-  kind VARCHAR(50) NOT NULL,
-  content JSONB NOT NULL,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_whatsapp_templates_kind ON whatsapp_templates(kind);
-CREATE INDEX IF NOT EXISTS idx_whatsapp_templates_category ON whatsapp_templates(category);
-
--- Ensure a single row per (user_id, kind, category)
-DO $$
-BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint WHERE conname = 'uniq_whatsapp_templates_user_kind_category'
-  ) THEN
-    ALTER TABLE whatsapp_templates ADD CONSTRAINT uniq_whatsapp_templates_user_kind_category UNIQUE (user_id, kind, category);
-  END IF;
-EXCEPTION WHEN others THEN
-  -- ignore if constraint exists or cannot be created in some environments
-  NULL;
-END$$;
-
--- Trigger to update updated_at
-CREATE OR REPLACE FUNCTION update_whatsapp_templates_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS whatsapp_templates_updated_at ON whatsapp_templates;
-CREATE TRIGGER whatsapp_templates_updated_at
-  BEFORE UPDATE ON whatsapp_templates
-  FOR EACH ROW
-  EXECUTE FUNCTION update_whatsapp_templates_updated_at();

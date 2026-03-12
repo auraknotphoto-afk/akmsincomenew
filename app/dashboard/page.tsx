@@ -71,7 +71,7 @@ function getDateRange(period: TimePeriod): { start: Date; end: Date; label: stri
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { isAuthenticated, loading: authLoading, logout } = useAuth();
+  const { isAuthenticated, loading: authLoading, logout, user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('this_month');
@@ -102,20 +102,21 @@ export default function DashboardPage() {
   // Redirect to login if not authenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      router.push('/login');
+      router.push('/auth/login');
     }
   }, [authLoading, isAuthenticated, router]);
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && user?.id) {
       fetchData();
     }
-  }, [selectedPeriod, isAuthenticated]);
+  }, [selectedPeriod, isAuthenticated, user?.id]);
 
   async function fetchData() {
+    if (!user?.id) return;
     setLoading(true);
     try {
-      const allJobs = await db.getJobs('00000000-0000-0000-0000-000000000001');
+      const allJobs = await db.getJobs(user.id);
       const { start, end } = getDateRange(selectedPeriod);
       
       // Helper function to parse date string as local time (not UTC)

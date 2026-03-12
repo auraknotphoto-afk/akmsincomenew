@@ -1,13 +1,19 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
-import { ArrowLeft, Plus, Calendar, User, IndianRupee, Trash2, Briefcase, Phone, Edit2, MessageCircle, Send } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ArrowLeft, Plus, Calendar, User, IndianRupee, Trash2, Briefcase, Phone, Edit2, MessageCircle } from 'lucide-react';
 import { db, Job } from '@/lib/supabase';
-import { formatSingleReminderAsync, formatConsolidatedReminderAsync, generateWhatsAppUrl, formatJobStatusMessageAsync, formatPaymentStatusMessage } from '@/lib/whatsappTemplates';
+import { buildCustomerSummaryMessage, buildWhatsAppMessage, generateWhatsAppUrl } from '@/lib/whatsappTemplates';
+import { useAuth } from '../../contexts/AuthContext';
+async function formatConsolidatedReminderAsync() { return ''; }
+async function formatJobStatusMessageAsync() { return ''; }
+function formatPaymentStatusMessage() { return ''; }
 
 export default function OtherPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { user, loading: authLoading } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [allJobs, setAllJobs] = useState<Job[]>([]);
   const [priorityFilter, setPriorityFilter] = useState<'ALL' | 'LOW' | 'NORMAL' | 'HIGH'>('ALL');
@@ -16,6 +22,10 @@ export default function OtherPage() {
   const [showForm, setShowForm] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
+  const [whatsAppJob, setWhatsAppJob] = useState<Job | null>(null);
+  const [waUpdateType, setWaUpdateType] = useState<'job' | 'payment'>('job');
+  const [waJobStatus, setWaJobStatus] = useState<'PENDING' | 'IN_PROGRESS' | 'COMPLETED'>('PENDING');
+  const [waPaymentStatus, setWaPaymentStatus] = useState<'PENDING' | 'PARTIAL' | 'COMPLETED'>('PENDING');
   
   // Autofill suggestions state
   const [customerSuggestions, setCustomerSuggestions] = useState<{name: string, phone: string}[]>([]);
@@ -52,8 +62,12 @@ export default function OtherPage() {
   });
 
   useEffect(() => {
-    fetchJobs();
-  }, []);
+    if (!authLoading && !user?.id) {
+      router.push('/auth/login');
+      return;
+    }
+    if (user?.id) fetchJobs(user.id);
+  }, [authLoading, user?.id, router]);
 
   // Build suggestions from ALL jobs across all categories
   useEffect(() => {
@@ -67,12 +81,12 @@ export default function OtherPage() {
     setCustomerSuggestions(customers);
   }, [allJobs]);
 
-  async function fetchJobs() {
+  async function fetchJobs(userId: string) {
     try {
-      const data = await db.getJobs('00000000-0000-0000-0000-000000000001', 'OTHER');
+      const data = await db.getJobs(userId, 'OTHER');
       setJobs(data);
       // Fetch all jobs for consolidated reminder
-      const allData = await db.getJobs('00000000-0000-0000-0000-000000000001');
+      const allData = await db.getJobs(userId);
       setAllJobs(allData);
     } catch (error) {
       console.error('Error fetching jobs:', error);
@@ -83,6 +97,10 @@ export default function OtherPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!user?.id) {
+      alert('Please sign in again.');
+      return;
+    }
     setFormLoading(true);
 
     try {
@@ -94,7 +112,7 @@ export default function OtherPage() {
         // Create new job
         const newJob = await db.createJob({
           ...formData,
-          user_id: '00000000-0000-0000-0000-000000000001',
+          user_id: user.id,
           category: 'OTHER',
         });
         console.log('Job created successfully:', newJob.id);
@@ -114,7 +132,7 @@ export default function OtherPage() {
         notes: '',
       });
       setShowForm(false);
-      fetchJobs();
+      fetchJobs(user.id);
     } catch (error) {
       console.error('Error creating job:', error);
       alert('Error saving job: ' + (error instanceof Error ? error.message : 'Unknown error'));
@@ -124,7 +142,8 @@ export default function OtherPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Are you sure you want to delete this job?')) return;
+    const typed = window.prompt('Type DELETE to move this entry to Trash.');
+    if (typed !== 'DELETE') return;
     try {
       console.log('[UI] Deleting job:', id);
       await db.deleteJob(id);
@@ -208,17 +227,63 @@ export default function OtherPage() {
     return status;
   };
 
-  const sendWhatsAppReminder = async (job: Job) => {
+  const getPaymentStatusDisplay = (status: string) => {
+    if (status === 'PENDING') return 'Pending';
+    if (status === 'PARTIAL') return 'Partial';
+    if (status === 'COMPLETED') return 'Completed';
+    return status;
+  };
+
+  const sendWhatsAppReminder = async (job: Job, updateType: 'job' | 'payment', selectedJobStatus: string, selectedPaymentStatus: string) => {
+    if (!user?.id) {
+      alert('Please sign in again.');
+      return;
+    }
     const phone = job.customer_phone?.replace(/[^0-9]/g, '') || '';
-    const message = await formatSingleReminderAsync({
-      customer_name: job.customer_name,
-      event_type: job.event_type || job.type_of_work,
-      start_date: job.start_date,
-      total_price: job.total_price,
-      amount_paid: job.amount_paid,
-      category: job.category
+    const message = await buildWhatsAppMessage({
+      userId: user.id,
+      category: 'OTHER',
+      updateType,
+      selectedJobStatus,
+      selectedPaymentStatus,
+      job,
     });
     const url = generateWhatsAppUrl(phone, message);
+    if (!url) {
+      alert('Customer phone number is missing.');
+      return;
+    }
+    window.open(url, '_blank');
+  };
+
+  const openWhatsAppDialog = (job: Job) => {
+    setWhatsAppJob(job);
+    setWaUpdateType('job');
+    setWaJobStatus(job.status);
+    setWaPaymentStatus(job.payment_status);
+  };
+
+  const sendCustomerSummaryWhatsApp = async (group: { name: string; phone: string; jobs: Job[] }) => {
+    if (!user?.id) {
+      alert('Please sign in again.');
+      return;
+    }
+    const phone = (group.phone || '').replace(/[^0-9]/g, '');
+    if (!phone) {
+      alert('Customer phone number is missing.');
+      return;
+    }
+    const message = await buildCustomerSummaryMessage({
+      userId: user.id,
+      category: 'OTHER',
+      group,
+    });
+
+    const url = generateWhatsAppUrl(phone, message);
+    if (!url) {
+      alert('Customer phone number is invalid.');
+      return;
+    }
     window.open(url, '_blank');
   };
 
@@ -268,6 +333,30 @@ export default function OtherPage() {
       return hay.includes(q);
     });
   }, [jobs, priorityFilter, searchQuery]);
+
+  const customerKeyForJob = (job: Job) =>
+    (job.customer_phone && job.customer_phone.trim()) ||
+    (job.customer_name && job.customer_name.trim()) ||
+    job.id;
+
+  const selectedCustomerKey = searchParams.get('customer');
+  const isCustomerView = !!selectedCustomerKey;
+
+  const customerGroups = filteredJobs.reduce((acc, job) => {
+    const key = customerKeyForJob(job);
+    const existing = acc.get(key);
+    if (!existing) {
+      acc.set(key, { key, name: job.customer_name, phone: job.customer_phone || '', jobs: [job] });
+    } else {
+      existing.jobs.push(job);
+    }
+    return acc;
+  }, new Map<string, { key: string; name: string; phone: string; jobs: Job[] }>());
+
+  const groupedCustomers = Array.from(customerGroups.values());
+  const customerJobs = isCustomerView
+    ? jobs.filter((j) => customerKeyForJob(j) === selectedCustomerKey)
+    : [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-orange-900 to-slate-900">
@@ -449,7 +538,7 @@ export default function OtherPage() {
                       <option value="IN_PROGRESS" className="bg-slate-800">In Progress</option>
                       <option value="COMPLETED" className="bg-slate-800">Completed</option>
                     </select>
-                    {formData.customer_phone && (
+                    {false && (
                       <button
                         type="button"
                         onClick={async () => {
@@ -480,7 +569,7 @@ export default function OtherPage() {
                       <option value="PARTIAL" className="bg-slate-800">Partial</option>
                       <option value="COMPLETED" className="bg-slate-800">Completed</option>
                     </select>
-                    {formData.customer_phone && (
+                    {false && (
                       <button
                         type="button"
                         onClick={async () => {
@@ -532,8 +621,80 @@ export default function OtherPage() {
               <h3 className="text-lg sm:text-xl font-bold text-white mt-4">No Other Income Yet</h3>
               <p className="text-orange-300 mt-2 text-sm sm:text-base">Click "Add Income" to create your first entry</p>
             </div>
+          ) : !isCustomerView && filteredJobs.length === 0 ? (
+            <div className="text-center py-12 sm:py-16 bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl">
+              <h3 className="text-lg sm:text-xl font-bold text-white mt-4">No matching entries</h3>
+              <p className="text-orange-300 text-sm sm:text-base mt-2">Try clearing filters or search to see entries.</p>
+            </div>
+          ) : !isCustomerView ? (
+            groupedCustomers.map((group) => {
+              const totalIncome = group.jobs.reduce((s, j) => s + j.total_price, 0);
+              const totalPaid = group.jobs.reduce((s, j) => s + j.amount_paid, 0);
+              return (
+                <div
+                  key={group.key}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => router.push(`/jobs/other?customer=${encodeURIComponent(group.key)}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      router.push(`/jobs/other?customer=${encodeURIComponent(group.key)}`);
+                    }
+                  }}
+                  className="w-full text-left bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6 hover:border-orange-500/50 transition-all active:scale-[0.99] cursor-pointer"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="text-lg font-bold text-white">{group.name}</h3>
+                      <p className="text-orange-300 text-sm mt-1">
+                        {group.phone ? `Phone: ${group.phone}` : 'No phone'}
+                      </p>
+                      <p className="text-orange-300 text-sm mt-1">Entries: {group.jobs.length}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xl font-bold text-white">Rs.{totalIncome.toLocaleString('en-IN')}</p>
+                      <p className="text-sm text-amber-400">
+                        Pending: Rs.{(totalIncome - totalPaid).toLocaleString('en-IN')}
+                      </p>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          sendCustomerSummaryWhatsApp(group);
+                        }}
+                        className="mt-2 inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 text-xs"
+                        title="Send Pending Summary"
+                      >
+                        <MessageCircle className="w-3.5 h-3.5" />
+                        WhatsApp
+                      </button>
+                      <p className="text-xs text-orange-300 mt-2">Tap to view all entries</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          ) : customerJobs.length === 0 ? (
+            <div className="text-center py-12 sm:py-16 bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl">
+              <h3 className="text-lg sm:text-xl font-bold text-white mt-4">No entries for this customer</h3>
+              <button
+                onClick={() => router.push('/jobs/other')}
+                className="mt-4 px-4 py-2 rounded-xl bg-orange-600 text-white font-semibold"
+              >
+                Back to Customers
+              </button>
+            </div>
           ) : (
-            filteredJobs.map((job) => (
+            <>
+              <div className="mb-2">
+                <button
+                  onClick={() => router.push('/jobs/other')}
+                  className="px-3 py-2 rounded-xl bg-white/10 text-white text-sm hover:bg-white/20"
+                >
+                  Back to Customers
+                </button>
+              </div>
+              {customerJobs.map((job) => (
               <div key={job.id} className="bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl p-3 sm:p-4 hover:border-orange-500/50 transition-all active:scale-[0.99]">
                 {/* Mobile View */}
                 <div className="sm:hidden">
@@ -566,6 +727,9 @@ export default function OtherPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5">
+                      <button onClick={() => openWhatsAppDialog(job)} className="p-2 rounded-lg bg-green-500/20 text-green-400 active:scale-95 touch-manipulation" title="WhatsApp">
+                        <MessageCircle className="w-4 h-4" />
+                      </button>
                       <select value={(job.priority || 'NORMAL')} onChange={(e) => handlePriorityChange(job.id, e.target.value)} className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-white text-sm">
                         <option value="LOW">Low</option>
                         <option value="NORMAL">Normal</option>
@@ -577,21 +741,6 @@ export default function OtherPage() {
                       <button onClick={() => handleDelete(job.id)} className="p-2 rounded-lg bg-red-500/20 text-red-400 active:scale-95 touch-manipulation">
                         <Trash2 className="w-4 h-4" />
                       </button>
-                      {job.customer_phone && (
-                        <>
-                          <button onClick={() => sendWhatsAppReminder(job)} className="p-2 rounded-lg bg-green-500/20 text-green-400 active:scale-95 touch-manipulation" title="Send WhatsApp">
-                            <MessageCircle className="w-4 h-4" />
-                          </button>
-                          {getPendingCountForCustomer(job.customer_phone) > 1 && (
-                            <button onClick={() => sendAllPendingReminder(job.customer_phone || '')} className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400 active:scale-95 touch-manipulation relative" title="Send All Reminders">
-                              <Send className="w-4 h-4" />
-                              <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-[8px] rounded-full w-3.5 h-3.5 flex items-center justify-center">
-                                {getPendingCountForCustomer(job.customer_phone)}
-                              </span>
-                            </button>
-                          )}
-                        </>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -622,21 +771,9 @@ export default function OtherPage() {
                         Balance (INR): ₹{(job.total_price - job.amount_paid).toLocaleString('en-IN')}
                       </p>
                     </div>
-                    {job.customer_phone && (
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => sendWhatsAppReminder(job)} className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors active:scale-95" title="Send WhatsApp">
-                          <MessageCircle className="w-5 h-5" />
-                        </button>
-                        {getPendingCountForCustomer(job.customer_phone) > 1 && (
-                          <button onClick={() => sendAllPendingReminder(job.customer_phone || '')} className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors relative active:scale-95" title={`Send All ${getPendingCountForCustomer(job.customer_phone)} Pending Reminders`}>
-                            <Send className="w-5 h-5" />
-                            <span className="absolute -top-1 -right-1 bg-emerald-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                              {getPendingCountForCustomer(job.customer_phone)}
-                            </span>
-                          </button>
-                        )}
-                      </div>
-                    )}
+                    <button onClick={() => openWhatsAppDialog(job)} className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors active:scale-95" title="WhatsApp">
+                      <MessageCircle className="w-5 h-5" />
+                    </button>
                     <select value={(job.priority || 'NORMAL')} onChange={(e) => handlePriorityChange(job.id, e.target.value)} className="px-2 py-1 rounded-lg bg-white/5 border border-white/10 text-white text-sm mr-2">
                       <option value="LOW">Low</option>
                       <option value="NORMAL">Normal</option>
@@ -651,10 +788,77 @@ export default function OtherPage() {
                   </div>
                 </div>
               </div>
-            ))
+            ))}
+            </>
           )}
         </div>
       </div>
+
+      {whatsAppJob && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-slate-900 border border-white/20 rounded-2xl p-5">
+            <h3 className="text-white text-lg font-bold mb-4">Send WhatsApp Update</h3>
+            <p className="text-orange-300 text-sm mb-4">{whatsAppJob.customer_name}</p>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-orange-300 mb-1">Update Type</label>
+                <select
+                  value={waUpdateType}
+                  onChange={(e) => setWaUpdateType(e.target.value as 'job' | 'payment')}
+                  className="w-full px-3 py-2 rounded-xl bg-white/10 border border-white/20 text-white"
+                >
+                  <option value="job" className="bg-slate-800">Job Status</option>
+                  <option value="payment" className="bg-slate-800">Payment Status</option>
+                </select>
+              </div>
+              {waUpdateType === 'job' ? (
+                <div>
+                  <label className="block text-xs text-orange-300 mb-1">Job Status</label>
+                  <select
+                    value={waJobStatus}
+                    onChange={(e) => setWaJobStatus(e.target.value as 'PENDING' | 'IN_PROGRESS' | 'COMPLETED')}
+                    className="w-full px-3 py-2 rounded-xl bg-white/10 border border-white/20 text-white"
+                  >
+                    <option value="PENDING" className="bg-slate-800">Yet to Start</option>
+                    <option value="IN_PROGRESS" className="bg-slate-800">In Progress</option>
+                    <option value="COMPLETED" className="bg-slate-800">Completed</option>
+                  </select>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs text-orange-300 mb-1">Payment Status</label>
+                  <select
+                    value={waPaymentStatus}
+                    onChange={(e) => setWaPaymentStatus(e.target.value as 'PENDING' | 'PARTIAL' | 'COMPLETED')}
+                    className="w-full px-3 py-2 rounded-xl bg-white/10 border border-white/20 text-white"
+                  >
+                    <option value="PENDING" className="bg-slate-800">Pending</option>
+                    <option value="PARTIAL" className="bg-slate-800">Partial</option>
+                    <option value="COMPLETED" className="bg-slate-800">Completed</option>
+                  </select>
+                </div>
+              )}
+            </div>
+            <div className="flex gap-2 mt-5">
+              <button
+                onClick={() => setWhatsAppJob(null)}
+                className="flex-1 py-2 rounded-xl bg-white/10 text-white"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  await sendWhatsAppReminder(whatsAppJob, waUpdateType, waJobStatus, waPaymentStatus);
+                  setWhatsAppJob(null);
+                }}
+                className="flex-1 py-2 rounded-xl bg-green-600 text-white font-semibold"
+              >
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
