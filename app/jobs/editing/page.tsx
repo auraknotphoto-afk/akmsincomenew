@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { Suspense, useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Plus, Camera, Calendar, User, IndianRupee, Trash2, Phone, Edit2, MessageCircle, Building2, Clock } from 'lucide-react';
 import { db, Job } from '@/lib/supabase';
@@ -33,6 +33,14 @@ const CAMERA_OPTIONS = [
 ];
 
 export default function EditingPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-900" />}>
+      <EditingPageContent />
+    </Suspense>
+  );
+}
+
+function EditingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();

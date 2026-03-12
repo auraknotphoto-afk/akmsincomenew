@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { Suspense, useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Plus, Calendar, User, IndianRupee, Trash2, Briefcase, Phone, Edit2, MessageCircle } from 'lucide-react';
 import { db, Job } from '@/lib/supabase';
@@ -11,6 +11,14 @@ async function formatJobStatusMessageAsync(..._args: unknown[]) { return ''; }
 function formatPaymentStatusMessage(..._args: unknown[]) { return ''; }
 
 export default function OtherPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-900" />}>
+      <OtherPageContent />
+    </Suspense>
+  );
+}
+
+function OtherPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();

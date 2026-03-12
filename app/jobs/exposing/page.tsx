@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Plus, Camera, Calendar, User, IndianRupee, MapPin, Trash2, Building2, Phone, Edit2, MessageCircle } from 'lucide-react';
 import { db, Job } from '@/lib/supabase';
@@ -26,6 +26,14 @@ const EVENT_TYPES = [
 ];
 
 export default function ExposingPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-slate-900" />}>
+      <ExposingPageContent />
+    </Suspense>
+  );
+}
+
+function ExposingPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading: authLoading } = useAuth();
