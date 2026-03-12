@@ -6,9 +6,9 @@ import { ArrowLeft, Plus, Calendar, User, IndianRupee, Trash2, Briefcase, Phone,
 import { db, Job } from '@/lib/supabase';
 import { buildCustomerSummaryMessage, buildWhatsAppMessage, generateWhatsAppUrl } from '@/lib/whatsappTemplates';
 import { useAuth } from '../../contexts/AuthContext';
-async function formatConsolidatedReminderAsync() { return ''; }
-async function formatJobStatusMessageAsync() { return ''; }
-function formatPaymentStatusMessage() { return ''; }
+async function formatConsolidatedReminderAsync(..._args: unknown[]) { return ''; }
+async function formatJobStatusMessageAsync(..._args: unknown[]) { return ''; }
+function formatPaymentStatusMessage(..._args: unknown[]) { return ''; }
 
 export default function OtherPage() {
   const router = useRouter();

@@ -7,8 +7,8 @@ import { db, Job } from '@/lib/supabase';
 import { buildCustomerSummaryMessage, buildWhatsAppMessage, generateWhatsAppUrl } from '@/lib/whatsappTemplates';
 import { useAuth } from '../../contexts/AuthContext';
 
-async function formatJobStatusMessageAsync() { return ''; }
-function formatPaymentStatusMessage() { return ''; }
+async function formatJobStatusMessageAsync(..._args: unknown[]) { return ''; }
+function formatPaymentStatusMessage(..._args: unknown[]) { return ''; }
 
 // Event types list - used across the app
 const EVENT_TYPES = [
