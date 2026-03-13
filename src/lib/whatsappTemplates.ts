@@ -127,6 +127,18 @@ function formatDate(value?: string): string {
   return new Date(value).toLocaleDateString('en-IN');
 }
 
+function formatDurationHours(value?: number): string {
+  if (!value || Number.isNaN(value)) return '';
+  const hours = Math.floor(value);
+  const minutes = Math.round((value - hours) * 60);
+  if (minutes === 60) {
+    return `${hours + 1} hr`;
+  }
+  if (hours === 0) return `${minutes} min`;
+  if (minutes === 0) return `${hours} hr`;
+  return `${hours} hr ${minutes} min`;
+}
+
 function buildEventDetails(job: Job): string {
   return job.event_details || '';
 }
@@ -182,7 +194,10 @@ export function getDefaultTemplate(
 
 export function applyTemplate(template: string, variables: Record<string, string>) {
   return template.replace(/\{([a-z_]+)\}/gi, (_, key: string) => {
-    return variables[key] ?? `{${key}}`;
+    const value = variables[key];
+    if (value === undefined || value === null) return 'nil';
+    if (typeof value === 'string' && value.trim() === '') return 'nil';
+    return value;
   });
 }
 
@@ -270,7 +285,7 @@ export async function buildWhatsAppMessage(params: {
     event_details: buildEventDetails(job),
     client_name: job.client_name || '',
     number_of_cameras: job.number_of_cameras ? String(job.number_of_cameras) : '',
-    duration_hours: job.duration_hours ? String(job.duration_hours) : '',
+    duration_hours: formatDurationHours(job.duration_hours),
     rate_per_hour: job.rate_per_hour ? String(job.rate_per_hour) : '',
     additional_work_type: job.additional_work_type || '',
     additional_work_custom: job.additional_work_custom || '',
