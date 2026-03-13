@@ -878,15 +878,6 @@ export default function ReportsPage() {
                           <p className="text-amber-400 font-medium">Rs.{month.pending.toLocaleString('en-IN')}</p>
                         </div>
                       </div>
-                        <div>
-                          <p className="text-gray-400">Received</p>
-                          <p className="text-emerald-400 font-medium">₹{month.paid.toLocaleString('en-IN')}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-400">Pending</p>
-                          <p className="text-amber-400 font-medium">₹{month.pending.toLocaleString('en-IN')}</p>
-                        </div>
-                      </div>
                     </div>
                   ))}
                 </div>
