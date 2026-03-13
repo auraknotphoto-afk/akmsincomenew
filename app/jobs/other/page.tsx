@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Plus, Calendar, User, IndianRupee, Trash2, Briefcase, Phone, Edit2, MessageCircle } from 'lucide-react';
 import { db, Job } from '@/lib/supabase';
-import { buildCustomerSummaryMessage, buildWhatsAppMessage, generateWhatsAppUrl } from '@/lib/whatsappTemplates';
+import { buildCustomerSummaryMessage, buildWhatsAppMessage, generateWhatsAppUrl, openWhatsAppUrl } from '@/lib/whatsappTemplates';
 import { useAuth } from '../../contexts/AuthContext';
 async function formatConsolidatedReminderAsync(..._args: unknown[]) { return ''; }
 async function formatJobStatusMessageAsync(..._args: unknown[]) { return ''; }
@@ -267,7 +267,7 @@ function OtherPageContent() {
       alert('Customer phone number is missing.');
       return;
     }
-    window.open(url, '_blank');
+    openWhatsAppUrl(url);
   };
 
   const openWhatsAppDialog = (job: Job) => {
@@ -298,7 +298,7 @@ function OtherPageContent() {
       alert('Customer phone number is invalid.');
       return;
     }
-    window.open(url, '_blank');
+    openWhatsAppUrl(url);
   };
 
   const sendAllPendingReminder = async (customerPhone: string) => {
@@ -321,7 +321,7 @@ function OtherPageContent() {
         category: job.category
       })));
       const url = generateWhatsAppUrl(phone, message);
-      window.open(url, '_blank');
+      openWhatsAppUrl(url);
     } catch (e) {
       console.error('Error sending consolidated reminder:', e);
     }
@@ -579,7 +579,7 @@ function OtherPageContent() {
                             amount_paid: formData.amount_paid,
                             category: 'OTHER'
                           });
-                          window.open(generateWhatsAppUrl(formData.customer_phone, message), '_blank');
+                          openWhatsAppUrl(generateWhatsAppUrl(formData.customer_phone, message));
                         }}
                         className="p-2.5 sm:p-3 rounded-xl bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors active:scale-95"
                         title="Send Status via WhatsApp"
@@ -610,7 +610,7 @@ function OtherPageContent() {
                             amount_paid: formData.amount_paid,
                             category: 'OTHER'
                           });
-                          window.open(generateWhatsAppUrl(formData.customer_phone, message), '_blank');
+                          openWhatsAppUrl(generateWhatsAppUrl(formData.customer_phone, message));
                         }}
                         className="p-2.5 sm:p-3 rounded-xl bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors active:scale-95"
                         title="Send Payment Status via WhatsApp"
@@ -907,5 +907,6 @@ function OtherPageContent() {
     </div>
   );
 }
+
 
 

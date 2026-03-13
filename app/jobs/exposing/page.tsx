@@ -4,7 +4,7 @@ import { Suspense, useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Plus, Camera, Calendar, User, IndianRupee, MapPin, Trash2, Building2, Phone, Edit2, MessageCircle } from 'lucide-react';
 import { db, Job } from '@/lib/supabase';
-import { buildCustomerSummaryMessage, buildWhatsAppMessage, generateWhatsAppUrl } from '@/lib/whatsappTemplates';
+import { buildCustomerSummaryMessage, buildWhatsAppMessage, generateWhatsAppUrl, openWhatsAppUrl } from '@/lib/whatsappTemplates';
 import { useAuth } from '../../contexts/AuthContext';
 
 async function formatJobStatusMessageAsync(..._args: unknown[]) { return ''; }
@@ -334,7 +334,7 @@ function ExposingPageContent() {
       alert('Customer phone number is missing.');
       return;
     }
-    window.open(url, '_blank');
+    openWhatsAppUrl(url);
   };
 
   const openWhatsAppDialog = (job: Job) => {
@@ -365,7 +365,7 @@ function ExposingPageContent() {
       alert('Customer phone number is invalid.');
       return;
     }
-    window.open(url, '_blank');
+    openWhatsAppUrl(url);
   };
 
   const customerKeyForJob = (job: Job) =>
@@ -682,7 +682,7 @@ function ExposingPageContent() {
                             amount_paid: formData.amount_paid,
                             category: 'EXPOSING'
                           });
-                          window.open(generateWhatsAppUrl(formData.customer_phone, message), '_blank');
+                          openWhatsAppUrl(generateWhatsAppUrl(formData.customer_phone, message));
                         }}
                         className="p-2.5 sm:p-3 rounded-xl bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors active:scale-95"
                         title="Send Job Status via WhatsApp"
@@ -713,7 +713,7 @@ function ExposingPageContent() {
                             amount_paid: formData.amount_paid,
                             category: 'EXPOSING'
                           });
-                          window.open(generateWhatsAppUrl(formData.customer_phone, message), '_blank');
+                          openWhatsAppUrl(generateWhatsAppUrl(formData.customer_phone, message));
                         }}
                         className="p-2.5 sm:p-3 rounded-xl bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors active:scale-95"
                         title="Send Payment Status via WhatsApp"
@@ -973,3 +973,4 @@ function ExposingPageContent() {
     </div>
   );
 }
+

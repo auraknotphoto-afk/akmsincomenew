@@ -8,6 +8,7 @@ const COMMON_VARIABLES = [
   '{customer_phone}',
   '{category}',
   '{event_type}',
+  '{event_details}',
   '{start_date}',
   '{end_date}',
   '{estimated_due_date}',
@@ -63,11 +64,61 @@ function formatDate(value?: string): string {
   return new Date(value).toLocaleDateString('en-IN');
 }
 
+function buildEventDetails(job: Job, category: TemplateCategory): string {
+  const parts: string[] = [];
+  const push = (label: string, value?: string) => {
+    if (!value) return;
+    parts.push(`${label}: ${value}`);
+  };
+
+  if (category === 'EXPOSING') {
+    push('Event', job.event_type || '');
+    push('Studio', job.studio_name || '');
+    push('Location', job.event_location || '');
+    push('Session', job.session_type || '');
+    push('Exposure', job.exposure_type || '');
+    push('Expose Type', job.expose_type || '');
+    push('Camera', job.camera_type || '');
+  } else if (category === 'EDITING') {
+    push('Event', job.event_type || '');
+    push('Client', job.client_name || '');
+    push('Cameras', job.number_of_cameras ? String(job.number_of_cameras) : '');
+    push('Camera', job.camera_type || '');
+    push('Duration', job.duration_hours ? `${job.duration_hours} hrs` : '');
+    push('Rate', job.rate_per_hour ? `Rs.${formatCurrency(job.rate_per_hour)}` : '');
+    push('Add Work', job.additional_work_type || job.additional_work_custom || '');
+    push('Add Rate', job.additional_work_rate ? `Rs.${formatCurrency(job.additional_work_rate)}` : '');
+  } else {
+    push('Work', job.type_of_work || '');
+    push('Expense', job.expense ? `Rs.${formatCurrency(job.expense)}` : '');
+    push('Profit', `Rs.${formatCurrency((job.total_price || 0) - (job.expense || 0))}`);
+  }
+
+  const start = formatDate(job.start_date);
+  const end = formatDate(job.end_date);
+  if (start || end) {
+    parts.push(`Dates: ${start}${end ? ` to ${end}` : ''}`);
+  }
+
+  return parts.join(' | ');
+}
+
 export function generateWhatsAppUrl(phone: string, message: string) {
   const digits = (phone || '').replace(/[^0-9]/g, '');
   if (!digits) return '';
   const normalized = digits.length === 10 ? `91${digits}` : digits;
   return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
+}
+
+export function openWhatsAppUrl(url: string) {
+  if (!url || typeof window === 'undefined') return;
+  const ua = navigator.userAgent || '';
+  const isMobile = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(ua);
+  if (isMobile) {
+    window.location.href = url;
+    return;
+  }
+  window.open(url, '_blank');
 }
 
 export function getDefaultTemplate(
@@ -163,6 +214,7 @@ export async function buildWhatsAppMessage(params: {
     customer_phone: job.customer_phone || '',
     category: category,
     event_type: job.event_type || job.type_of_work || '',
+    event_details: buildEventDetails(job, category),
     client_name: job.client_name || '',
     number_of_cameras: job.number_of_cameras ? String(job.number_of_cameras) : '',
     duration_hours: job.duration_hours ? String(job.duration_hours) : '',
@@ -227,6 +279,7 @@ export async function buildCustomerSummaryMessage(params: {
     customer_phone: group.phone || '',
     category,
     event_type: '',
+    event_details: '',
     client_name: '',
     number_of_cameras: '',
     duration_hours: '',
