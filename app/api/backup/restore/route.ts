@@ -131,8 +131,8 @@ export async function POST(req: NextRequest) {
     }
 
     if (templates.length) {
-      const normalizedTemplates = templates.map((template) =>
-        normalizeTemplate(userId, template as BackupTemplate)
+      const normalizedTemplates = (templates as BackupTemplate[]).map((template) =>
+        normalizeTemplate(userId, template)
       );
 
       const templatesUpsertRes = await supabase.from('whatsapp_templates').upsert(
