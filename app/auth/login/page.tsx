@@ -63,7 +63,7 @@ export default function LoginPage() {
         </div>
 
         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6" suppressHydrationWarning>
             <div>
               <h2 className="text-xl font-bold text-white mb-2">Welcome Back!</h2>
               <p className="text-gray-400 text-sm">Sign in with your username and password</p>
@@ -74,6 +74,7 @@ export default function LoginPage() {
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-400" />
                 <input
+                  suppressHydrationWarning
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
@@ -89,6 +90,7 @@ export default function LoginPage() {
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-purple-400" />
                 <input
+                  suppressHydrationWarning
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
