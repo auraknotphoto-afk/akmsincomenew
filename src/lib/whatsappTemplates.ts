@@ -67,8 +67,8 @@ function formatDate(value?: string): string {
 function buildEventDetails(job: Job, category: TemplateCategory): string {
   const parts: string[] = [];
   const push = (label: string, value?: string) => {
-    if (!value) return;
-    parts.push(`${label}: ${value}`);
+    const v = (value || '').toString().trim();
+    parts.push(`${label}: ${v || '-'}`);
   };
 
   if (category === 'EXPOSING') {
@@ -90,15 +90,15 @@ function buildEventDetails(job: Job, category: TemplateCategory): string {
     push('Add Rate', job.additional_work_rate ? `Rs.${formatCurrency(job.additional_work_rate)}` : '');
   } else {
     push('Work', job.type_of_work || '');
-    push('Expense', job.expense ? `Rs.${formatCurrency(job.expense)}` : '');
+    push('Expense', `Rs.${formatCurrency(job.expense || 0)}`);
     push('Profit', `Rs.${formatCurrency((job.total_price || 0) - (job.expense || 0))}`);
   }
 
   const start = formatDate(job.start_date);
   const end = formatDate(job.end_date);
-  if (start || end) {
-    parts.push(`Dates: ${start}${end ? ` to ${end}` : ''}`);
-  }
+  parts.push(`Start Date: ${start || '-'}`);
+  parts.push(`End Date: ${end || '-'}`);
+  parts.push(`Estimated Due: ${formatDate(job.estimated_due_date) || '-'}`);
 
   return parts.join(' | ');
 }
@@ -143,7 +143,7 @@ export function getDefaultTemplate(
     .toLowerCase()
     .replace(/\b\w/g, (m) => m.toUpperCase());
   if (templateType === 'JOB_STATUS') {
-    return `Hi {customer_name}, your ${category.toLowerCase()} job status is ${label}. Event/Work: {event_type}. Date: {start_date}.`;
+    return `Hi {customer_name}, your ${category.toLowerCase()} job status is ${label}.\nEvent Details: {event_details}`;
   }
   return `Hi {customer_name}, your payment status is ${label}. Total: Rs.{total_price}, Paid: Rs.{amount_paid}, Balance: Rs.{balance}.`;
 }
