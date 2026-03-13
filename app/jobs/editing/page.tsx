@@ -76,6 +76,7 @@ function EditingPageContent() {
   const [formData, setFormData] = useState<{
     customer_name: string;
     customer_phone: string;
+    event_details: string;
     client_name: string;
     studio_name: string;
     event_type: string;
@@ -96,6 +97,7 @@ function EditingPageContent() {
   }>({
     customer_name: '',
     customer_phone: '',
+    event_details: '',
     client_name: '',
     studio_name: '',
     event_type: '',
@@ -131,6 +133,7 @@ function EditingPageContent() {
       if (!q) return true;
       return (
         (job.customer_name || '').toLowerCase().includes(q) ||
+        (job.event_details || '').toLowerCase().includes(q) ||
         ((job as any).client_name || '').toLowerCase().includes(q) ||
         ((job.event_type || '') as string).toLowerCase().includes(q) ||
         ((job.type_of_work || '') as string).toLowerCase().includes(q) ||
@@ -220,6 +223,7 @@ function EditingPageContent() {
       setFormData({
         customer_name: '',
         customer_phone: '',
+        event_details: '',
         client_name: '',
         studio_name: '',
         event_type: '',
@@ -279,6 +283,7 @@ function EditingPageContent() {
     setFormData({
       customer_name: job.customer_name,
       customer_phone: job.customer_phone || '',
+      event_details: job.event_details || '',
       client_name: job.client_name || '',
       studio_name: job.studio_name || '',
       event_type: isCustomEvent ? '' : (job.event_type || ''),
@@ -313,6 +318,7 @@ function EditingPageContent() {
     setFormData({
       customer_name: '',
       customer_phone: '',
+      event_details: '',
       client_name: '',
       studio_name: '',
       event_type: '',
@@ -609,8 +615,8 @@ function EditingPageContent() {
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
                     <input 
                       type="text" 
-                      value={formData.client_name} 
-                      onChange={(e) => setFormData({ ...formData, client_name: e.target.value })} 
+                      value={formData.event_details} 
+                      onChange={(e) => setFormData({ ...formData, event_details: e.target.value })} 
                       className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation" 
                       placeholder="Enter event details"
                     />
@@ -1021,7 +1027,7 @@ function EditingPageContent() {
                       <div className="flex flex-col gap-1 text-xs sm:text-sm">
                         <div className="flex items-center gap-3 text-purple-300 truncate">
                           <div className="truncate"><span className="font-semibold">Event:</span> <span className="ml-1">{job.event_type || '—'}</span></div>
-                          <div className="truncate"><span className="font-semibold">Details:</span> <span className="ml-1">{job.client_name || '—'}</span></div>
+                          <div className="truncate"><span className="font-semibold">Details:</span> <span className="ml-1">{job.event_details || '—'}</span></div>
                         </div>
                         <div className="text-white font-bold text-sm">
                           <span>Start: {new Date(job.start_date).toLocaleDateString('en-IN')}</span>

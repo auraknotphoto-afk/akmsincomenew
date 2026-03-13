@@ -3,6 +3,69 @@ import { db, Job, WhatsAppTemplate } from '@/lib/supabase';
 export type TemplateCategory = 'EDITING' | 'EXPOSING' | 'OTHER';
 export type TemplateType = 'JOB_STATUS' | 'PAYMENT_STATUS' | 'CUSTOMER_SUMMARY';
 
+const EMOJI_CODEPOINTS: Record<string, number[]> = {
+  ':wave:': [0x1f44b],
+  ':smile:': [0x1f642],
+  ':phone:': [0x1f4de],
+  ':calendar:': [0x1f4c5],
+  ':invoice:': [0x1f9fe],
+  ':money:': [0x1f4b0],
+  ':check:': [0x2705],
+  ':warning:': [0x26a0, 0xfe0f],
+  ':pray:': [0x1f64f],
+  ':handshake:': [0x1f91d],
+  ':camera:': [0x1f4f8],
+  ':temple:': [0x1f3db, 0xfe0f],
+  ':studio:': [0x1f3e2],
+  ':location:': [0x1f4cd],
+  ':timer:': [0x23f1, 0xfe0f],
+  ':celebrate:': [0x1f389],
+  ':cut:': [0x2702, 0xfe0f],
+  ':computer:': [0x1f5a5, 0xfe0f],
+  ':movie:': [0x1f3ac],
+  ':folder:': [0x1f4c2],
+  ':hourglass:': [0x23f3],
+  ':income:': [0x1f4b5],
+  ':profit:': [0x1f4c8],
+  ':expense:': [0x1f4c9],
+  ':calc:': [0x1f9ee],
+};
+
+const EMOJI_FALLBACK_LABELS: Record<string, string> = {
+  ':wave:': '[wave]',
+  ':smile:': '[smile]',
+  ':phone:': '[phone]',
+  ':calendar:': '[date]',
+  ':invoice:': '[invoice]',
+  ':money:': '[money]',
+  ':check:': '[ok]',
+  ':warning:': '[alert]',
+  ':pray:': '[thanks]',
+  ':handshake:': '[thanks]',
+  ':camera:': '[camera]',
+  ':temple:': '[temple]',
+  ':studio:': '[studio]',
+  ':location:': '[location]',
+  ':timer:': '[time]',
+  ':celebrate:': '[celebrate]',
+  ':cut:': '[edit]',
+  ':computer:': '[edit]',
+  ':movie:': '[edit]',
+  ':folder:': '[files]',
+  ':hourglass:': '[delay]',
+  ':income:': '[income]',
+  ':profit:': '[profit]',
+  ':expense:': '[expense]',
+  ':calc:': '[calc]',
+};
+
+const EMOJI_CHAR_TO_LABEL: Record<string, string> = Object.fromEntries(
+  Object.entries(EMOJI_CODEPOINTS).map(([token, codepoints]) => [
+    String.fromCodePoint(...codepoints),
+    EMOJI_FALLBACK_LABELS[token] || '',
+  ])
+);
+
 const COMMON_VARIABLES = [
   '{customer_name}',
   '{customer_phone}',
@@ -64,50 +127,19 @@ function formatDate(value?: string): string {
   return new Date(value).toLocaleDateString('en-IN');
 }
 
-function buildEventDetails(job: Job, category: TemplateCategory): string {
-  const parts: string[] = [];
-  const push = (label: string, value?: string) => {
-    const v = (value || '').toString().trim();
-    parts.push(`${label}: ${v || '-'}`);
-  };
-
-  if (category === 'EXPOSING') {
-    push('Event', job.event_type || '');
-    push('Studio', job.studio_name || '');
-    push('Location', job.event_location || '');
-    push('Session', job.session_type || '');
-    push('Exposure', job.exposure_type || '');
-    push('Expose Type', job.expose_type || '');
-    push('Camera', job.camera_type || '');
-  } else if (category === 'EDITING') {
-    push('Event', job.event_type || '');
-    push('Client', job.client_name || '');
-    push('Cameras', job.number_of_cameras ? String(job.number_of_cameras) : '');
-    push('Camera', job.camera_type || '');
-    push('Duration', job.duration_hours ? `${job.duration_hours} hrs` : '');
-    push('Rate', job.rate_per_hour ? `Rs.${formatCurrency(job.rate_per_hour)}` : '');
-    push('Add Work', job.additional_work_type || job.additional_work_custom || '');
-    push('Add Rate', job.additional_work_rate ? `Rs.${formatCurrency(job.additional_work_rate)}` : '');
-  } else {
-    push('Work', job.type_of_work || '');
-    push('Expense', `Rs.${formatCurrency(job.expense || 0)}`);
-    push('Profit', `Rs.${formatCurrency((job.total_price || 0) - (job.expense || 0))}`);
-  }
-
-  const start = formatDate(job.start_date);
-  const end = formatDate(job.end_date);
-  parts.push(`Start Date: ${start || '-'}`);
-  parts.push(`End Date: ${end || '-'}`);
-  parts.push(`Estimated Due: ${formatDate(job.estimated_due_date) || '-'}`);
-
-  return parts.join(' | ');
+function buildEventDetails(job: Job): string {
+  return job.event_details || '';
 }
 
 export function generateWhatsAppUrl(phone: string, message: string) {
   const digits = (phone || '').replace(/[^0-9]/g, '');
   if (!digits) return '';
   const normalized = digits.length === 10 ? `91${digits}` : digits;
-  return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
+  const cleaned = message.replace(/\uFFFD/g, '');
+  const fallback = typeof window !== 'undefined' && localStorage.getItem('akms_emoji_fallback') === 'true';
+  const withEmojis = replaceEmojiTokens(cleaned, fallback);
+  const encoded = encodeURIComponent(withEmojis).replace(/%EF%BF%BD/gi, '');
+  return `https://wa.me/${normalized}?text=${encoded}`;
 }
 
 export function openWhatsAppUrl(url: string) {
@@ -152,6 +184,26 @@ export function applyTemplate(template: string, variables: Record<string, string
   return template.replace(/\{([a-z_]+)\}/gi, (_, key: string) => {
     return variables[key] ?? `{${key}}`;
   });
+}
+
+function replaceEmojiTokens(text: string, fallback: boolean) {
+  const cleaned = text.replace(/\uFFFD/g, '');
+  let base = cleaned;
+  if (fallback) {
+    for (const [emoji, label] of Object.entries(EMOJI_CHAR_TO_LABEL)) {
+      if (!label) continue;
+      base = base.split(emoji).join(label);
+    }
+  }
+  const replaced = base.replace(/:([a-z_]+):?/gi, (match, key: string) => {
+    const token = `:${key.toLowerCase()}:`;
+    if (fallback) {
+      return EMOJI_FALLBACK_LABELS[token] || match;
+    }
+    const codepoints = EMOJI_CODEPOINTS[token];
+    return codepoints ? String.fromCodePoint(...codepoints) : match;
+  });
+  return replaced.replace(/\uFFFD/g, '');
 }
 
 export function getStatusKeyForTemplate(
@@ -208,13 +260,14 @@ export async function buildWhatsAppMessage(params: {
       t.status_key === statusKey
   );
 
-  const templateText = matched?.template_text || getDefaultTemplate(category, templateType, statusKey);
+  const templateText = (matched?.template_text || getDefaultTemplate(category, templateType, statusKey))
+    .replace(/\uFFFD/g, '');
   const variables = {
     customer_name: job.customer_name || '',
     customer_phone: job.customer_phone || '',
     category: category,
     event_type: job.event_type || job.type_of_work || '',
-    event_details: buildEventDetails(job, category),
+    event_details: buildEventDetails(job),
     client_name: job.client_name || '',
     number_of_cameras: job.number_of_cameras ? String(job.number_of_cameras) : '',
     duration_hours: job.duration_hours ? String(job.duration_hours) : '',
@@ -243,7 +296,7 @@ export async function buildWhatsAppMessage(params: {
     payment_status: getStatusLabel(category, 'payment', selectedPaymentStatus),
   };
 
-  return applyTemplate(templateText, variables);
+  return replaceEmojiTokens(applyTemplate(templateText, variables), false);
 }
 
 export async function buildCustomerSummaryMessage(params: {
@@ -270,9 +323,10 @@ export async function buildCustomerSummaryMessage(params: {
   const totalPaid = group.jobs.reduce((s, j) => s + (j.amount_paid || 0), 0);
   const totalPending = totalAmount - totalPaid;
 
-  const templateText =
+  const templateText = (
     matched?.template_text ||
-    getDefaultTemplate(category, 'CUSTOMER_SUMMARY', 'CUSTOMER_SUMMARY');
+    getDefaultTemplate(category, 'CUSTOMER_SUMMARY', 'CUSTOMER_SUMMARY')
+  ).replace(/\uFFFD/g, '');
 
   const variables = {
     customer_name: group.name || '',
@@ -310,5 +364,5 @@ export async function buildCustomerSummaryMessage(params: {
     payment_status: '',
   };
 
-  return applyTemplate(templateText, variables);
+  return replaceEmojiTokens(applyTemplate(templateText, variables), false);
 }

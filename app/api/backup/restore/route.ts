@@ -13,6 +13,7 @@ function normalizeJob(userId: string, job: BackupJob) {
     category: String(job.category || 'OTHER'),
     customer_name: String(job.customer_name || ''),
     customer_phone: job.customer_phone ? String(job.customer_phone) : null,
+    event_details: job.event_details ? String(job.event_details) : null,
     client_name: job.client_name ? String(job.client_name) : null,
     studio_name: job.studio_name ? String(job.studio_name) : null,
     event_type: job.event_type ? String(job.event_type) : null,

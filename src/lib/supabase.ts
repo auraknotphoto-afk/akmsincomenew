@@ -29,6 +29,7 @@ export interface Job {
   category: 'EDITING' | 'EXPOSING' | 'OTHER';
   customer_name: string;
   customer_phone?: string;
+  event_details?: string;
   client_name?: string;
   studio_name?: string;
   event_type?: string;
@@ -233,6 +234,7 @@ export const db = {
       priority: (job as any).priority || null,
       payment_date: job.payment_date || null,
       customer_phone: job.customer_phone || null,
+      event_details: (job as any).event_details || null,
       client_name: job.client_name || null,
       studio_name: job.studio_name || null,
       event_type: job.event_type || null,
@@ -279,7 +281,7 @@ export const db = {
     // Clean up empty strings - convert to null for Supabase
     const cleanedUpdates: Partial<Job> = { ...updates };
     const dateFields = ['start_date', 'end_date', 'payment_date', 'estimated_due_date'];
-    const stringFields = ['customer_phone', 'client_name', 'studio_name', 'event_type', 'event_location', 'session_type', 'exposure_type', 'expose_type', 'camera_type', 'type_of_work', 'additional_work_type', 'additional_work_custom', 'notes', 'priority'];
+    const stringFields = ['customer_phone', 'event_details', 'client_name', 'studio_name', 'event_type', 'event_location', 'session_type', 'exposure_type', 'expose_type', 'camera_type', 'type_of_work', 'additional_work_type', 'additional_work_custom', 'notes', 'priority'];
     
     for (const field of dateFields) {
       if (field in cleanedUpdates && cleanedUpdates[field as keyof Job] === '') {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Fingerprint, LogOut, User, Shield, MessageCircle, Save, Trash2, Download, Upload } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,6 +9,46 @@ import { getDefaultTemplate, getTemplateVariables } from '@/lib/whatsappTemplate
 
 type Category = 'EDITING' | 'EXPOSING' | 'OTHER';
 type TemplateMode = 'JOB_STATUS' | 'PAYMENT_STATUS' | 'CUSTOMER_SUMMARY';
+
+const COMMON_EMOJIS = [
+  { emoji: '👋', token: ':wave:' },
+  { emoji: '🙂', token: ':smile:' },
+  { emoji: '📞', token: ':phone:' },
+  { emoji: '📅', token: ':calendar:' },
+  { emoji: '🧾', token: ':invoice:' },
+  { emoji: '💰', token: ':money:' },
+  { emoji: '✅', token: ':check:' },
+  { emoji: '⚠️', token: ':warning:' },
+  { emoji: '🙏', token: ':pray:' },
+  { emoji: '🤝', token: ':handshake:' },
+];
+const EXPOSING_EMOJIS = [
+  { emoji: '📸', token: ':camera:' },
+  { emoji: '🏛️', token: ':temple:' },
+  { emoji: '🏢', token: ':studio:' },
+  { emoji: '📍', token: ':location:' },
+  { emoji: '⏱️', token: ':timer:' },
+  { emoji: '🎉', token: ':celebrate:' },
+];
+const EDITING_EMOJIS = [
+  { emoji: '✂️', token: ':cut:' },
+  { emoji: '🖥️', token: ':computer:' },
+  { emoji: '🎬', token: ':movie:' },
+  { emoji: '📂', token: ':folder:' },
+  { emoji: '⏳', token: ':hourglass:' },
+];
+const OTHER_EMOJIS = [
+  { emoji: '💵', token: ':income:' },
+  { emoji: '📈', token: ':profit:' },
+  { emoji: '📉', token: ':expense:' },
+  { emoji: '🧮', token: ':calc:' },
+];
+
+function getEmojiSuggestions(category: Category) {
+  if (category === 'EXPOSING') return [...COMMON_EMOJIS, ...EXPOSING_EMOJIS];
+  if (category === 'EDITING') return [...COMMON_EMOJIS, ...EDITING_EMOJIS];
+  return [...COMMON_EMOJIS, ...OTHER_EMOJIS];
+}
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -22,12 +62,14 @@ export default function SettingsPage() {
     templateMode === 'CUSTOMER_SUMMARY' ? 'JOB_STATUS' : templateMode;
   const dbStatusKey = templateMode === 'CUSTOMER_SUMMARY' ? 'CUSTOMER_SUMMARY' : statusKey;
   const [templateText, setTemplateText] = useState('');
+  const templateRef = useRef<HTMLTextAreaElement | null>(null);
   const [saveLoading, setSaveLoading] = useState(false);
   const [defaultLoading, setDefaultLoading] = useState(false);
   const [backupLoading, setBackupLoading] = useState(false);
   const [restoreLoading, setRestoreLoading] = useState(false);
   const [restoreMode, setRestoreMode] = useState<'merge' | 'replace'>('merge');
   const [allTemplates, setAllTemplates] = useState<WhatsAppTemplate[]>([]);
+  const [emojiFallbackEnabled, setEmojiFallbackEnabled] = useState(false);
 
   useEffect(() => {
     if (!loading && !user?.id) {
@@ -36,6 +78,8 @@ export default function SettingsPage() {
     }
     const biometricReg = localStorage.getItem('akms_biometric_registered');
     if (biometricReg) setBiometricRegistered(true);
+    const emojiFallback = localStorage.getItem('akms_emoji_fallback');
+    setEmojiFallbackEnabled(emojiFallback === 'true');
   }, [loading, user?.id, router]);
 
   useEffect(() => {
@@ -50,7 +94,8 @@ export default function SettingsPage() {
         t.template_type === dbTemplateType &&
         t.status_key === dbStatusKey
     );
-    setTemplateText(found?.template_text || getDefaultTemplate(category, templateMode, dbStatusKey));
+    const base = found?.template_text || getDefaultTemplate(category, templateMode, dbStatusKey);
+    setTemplateText(sanitizeTemplateText(base));
   }, [allTemplates, category, templateMode, statusKey, dbTemplateType, dbStatusKey]);
 
   useEffect(() => {
@@ -109,20 +154,50 @@ export default function SettingsPage() {
           { value: 'COMPLETED', label: 'Completed' },
         ];
 
-  const insertVariable = (v: string) => {
-    setTemplateText((prev) => `${prev}${prev.endsWith(' ') || prev.length === 0 ? '' : ' '}${v}`);
+  const insertAtCursor = (value: string) => {
+    const el = templateRef.current;
+    if (!el) {
+      setTemplateText((prev) => `${prev}${prev.endsWith(' ') || prev.length === 0 ? '' : ' '}${value}`);
+      return;
+    }
+
+    const start = el.selectionStart ?? el.value.length;
+    const end = el.selectionEnd ?? el.value.length;
+    const prefix = el.value.slice(0, start);
+    const suffix = el.value.slice(end);
+    const spacer = prefix.length > 0 && !prefix.endsWith(' ') ? ' ' : '';
+    const next = `${prefix}${spacer}${value}${suffix}`;
+
+    setTemplateText(next);
+
+    const cursor = start + spacer.length + value.length;
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(cursor, cursor);
+    });
   };
+
+  const insertVariable = (v: string) => insertAtCursor(v);
+  const insertEmoji = (token: string) => insertAtCursor(token);
+
+  const sanitizeTemplateText = (value: string) =>
+    value.replace(/\uFFFD/g, '').replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, '');
 
   const handleSaveTemplate = async () => {
     if (!user?.id) return;
     setSaveLoading(true);
     try {
+      const cleaned = sanitizeTemplateText(templateText).trim();
+      if (cleaned !== templateText.trim()) {
+        setTemplateText(cleaned);
+        alert('Emoji characters were removed. Use the emoji tokens (e.g., :wave:).');
+      }
       await db.upsertWhatsAppTemplate({
         user_id: user.id,
         category,
         template_type: dbTemplateType,
         status_key: dbStatusKey,
-        template_text: templateText.trim(),
+        template_text: cleaned,
       });
       await loadTemplates(user.id);
       alert('WhatsApp template saved.');
@@ -254,6 +329,14 @@ export default function SettingsPage() {
       alert(`Failed to restore backup: ${msg}`);
     } finally {
       setRestoreLoading(false);
+    }
+  };
+
+  const handleToggleEmojiFallback = () => {
+    const next = !emojiFallbackEnabled;
+    setEmojiFallbackEnabled(next);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('akms_emoji_fallback', next ? 'true' : 'false');
     }
   };
 
@@ -411,6 +494,22 @@ export default function SettingsPage() {
             WhatsApp Templates
           </h2>
 
+          <div className="mb-4 flex items-center justify-between flex-wrap gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+            <div>
+              <p className="text-sm text-white font-medium">Emoji fallback (desktop friendly)</p>
+              <p className="text-xs text-slate-400">Replace emojis with words when sending WhatsApp messages.</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleToggleEmojiFallback}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold ${
+                emojiFallbackEnabled ? 'bg-emerald-500/20 text-emerald-300' : 'bg-white/10 text-slate-200'
+              }`}
+            >
+              {emojiFallbackEnabled ? 'Enabled' : 'Disabled'}
+            </button>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
             <div>
               <label className="block text-xs text-slate-300 mb-1">Category</label>
@@ -468,9 +567,28 @@ export default function SettingsPage() {
             </div>
           </div>
 
+          <div className="mb-3">
+            <p className="text-xs text-slate-300 mb-2">WhatsApp Emojis (tap to insert)</p>
+            <div className="flex flex-wrap gap-2">
+              {getEmojiSuggestions(category).map((item) => (
+                <button
+                  key={item.token}
+                  type="button"
+                  onClick={() => insertEmoji(item.token)}
+                  className="px-2 py-1 rounded-lg bg-white/10 text-sm text-slate-200 hover:bg-white/20"
+                >
+                  <span className="mr-1">{item.emoji}</span>
+                  <span className="text-xs text-slate-300">{item.token}</span>
+                </button>
+              ))}
+            </div>
+            <p className="text-xs text-slate-400 mt-2">Buttons insert emoji tokens (like `:camera:`). They are converted to real emojis when sending to WhatsApp.</p>
+          </div>
+
           <div>
             <label className="block text-xs text-slate-300 mb-1">Template Message</label>
             <textarea
+              ref={templateRef}
               value={templateText}
               onChange={(e) => setTemplateText(e.target.value)}
               rows={6}

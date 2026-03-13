@@ -39,6 +39,7 @@ model Job {
   
   // Editing & Exposing specific
   customerName    String?
+  eventDetails    String?
   eventType       String?
   startDate       DateTime?
   endDate         DateTime?

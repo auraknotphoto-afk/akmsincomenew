@@ -64,6 +64,7 @@ function ExposingPageContent() {
   const [formData, setFormData] = useState<{
     customer_name: string;
     customer_phone: string;
+    event_details: string;
     studio_name: string;
     event_type: string;
     event_location: string;
@@ -82,6 +83,7 @@ function ExposingPageContent() {
   }>({
     customer_name: '',
     customer_phone: '',
+    event_details: '',
     studio_name: '',
     event_type: '',
     event_location: '',
@@ -118,7 +120,9 @@ function ExposingPageContent() {
     }, [] as {name: string, phone: string}[]);
     setCustomerSuggestions(customers);
     
-    const studios = [...new Set(allJobs.filter(j => j.studio_name).map(j => j.studio_name!))];
+    const studios = [...new Set(allJobs
+      .map(j => j.event_details || j.studio_name)
+      .filter(Boolean) as string[])];
     setStudioSuggestions(studios);
   }, [allJobs]);
 
@@ -168,6 +172,7 @@ function ExposingPageContent() {
       setFormData({
         customer_name: '',
         customer_phone: '',
+        event_details: '',
         studio_name: '',
         event_type: '',
         event_location: '',
@@ -216,6 +221,7 @@ function ExposingPageContent() {
     setFormData({
       customer_name: job.customer_name,
       customer_phone: job.customer_phone || '',
+      event_details: job.event_details || '',
       studio_name: job.studio_name || '',
       event_type: isCustomEvent ? '' : (job.event_type || ''),
       event_location: job.event_location || '',
@@ -248,6 +254,7 @@ function ExposingPageContent() {
     setFormData({
       customer_name: '',
       customer_phone: '',
+      event_details: '',
       studio_name: '',
       event_type: '',
       event_location: '',
@@ -278,8 +285,8 @@ function ExposingPageContent() {
     c.phone.includes(formData.customer_phone) && formData.customer_phone.length > 0
   );
   
-  const filteredStudios = studioSuggestions.filter(s => 
-    s.toLowerCase().includes(formData.studio_name.toLowerCase()) && formData.studio_name.length > 0
+  const filteredStudios = studioSuggestions.filter(s =>
+    s.toLowerCase().includes(formData.event_details.toLowerCase()) && formData.event_details.length > 0
   );
 
   const selectCustomer = (customer: {name: string, phone: string}) => {
@@ -502,8 +509,8 @@ function ExposingPageContent() {
                     <input 
                       ref={studioInputRef}
                       type="text" 
-                      value={formData.studio_name} 
-                      onChange={(e) => setFormData({ ...formData, studio_name: e.target.value })} 
+                      value={formData.event_details} 
+                      onChange={(e) => setFormData({ ...formData, event_details: e.target.value })} 
                       onFocus={() => setShowStudioSuggestions(true)}
                       onBlur={() => setTimeout(() => setShowStudioSuggestions(false), 200)}
                       className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-cyan-500 touch-manipulation" 
@@ -518,7 +525,7 @@ function ExposingPageContent() {
                           key={idx}
                           type="button"
                           onClick={() => {
-                            setFormData({ ...formData, studio_name: studio });
+                            setFormData({ ...formData, event_details: studio });
                             setShowStudioSuggestions(false);
                           }}
                           className="w-full px-4 py-2 text-left text-white hover:bg-cyan-600/30 flex items-center gap-2"
@@ -839,7 +846,7 @@ function ExposingPageContent() {
                   <div className="flex flex-wrap gap-2 text-xs text-cyan-300 mb-3">
                     <span>📅 {new Date(job.start_date).toLocaleDateString('en-IN')}</span>
                     {job.event_location && <span>📍 {job.event_location}</span>}
-                    {job.studio_name && <span>🏢 {job.studio_name}</span>}
+                    {job.event_details && <span>🏢 {job.event_details}</span>}
                   </div>
                   <div className="flex justify-between items-center">
                     <div>
@@ -878,7 +885,7 @@ function ExposingPageContent() {
                       <span>📅 {new Date(job.start_date).toLocaleDateString('en-IN')}</span>
                       {job.end_date && <span>→ {new Date(job.end_date).toLocaleDateString('en-IN')}</span>}
                       {job.event_location && <span>📍 {job.event_location}</span>}
-                      {job.studio_name && <span>🏢 {job.studio_name}</span>}
+                      {job.event_details && <span>🏢 {job.event_details}</span>}
                     </div>
                   </div>
                   <div className="flex items-center gap-6">

@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS jobs (
   -- Common Fields
   customer_name VARCHAR(255) NOT NULL,
   customer_phone VARCHAR(15),
+  event_details TEXT,
   start_date DATE NOT NULL,
   end_date DATE,
   total_price DECIMAL(12, 2) NOT NULL DEFAULT 0,
@@ -124,6 +125,7 @@ CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS additional_work_type VARCHAR(255);
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS additional_work_custom TEXT;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS additional_work_rate DECIMAL(10,2);
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS event_details TEXT;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS is_deleted BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 
