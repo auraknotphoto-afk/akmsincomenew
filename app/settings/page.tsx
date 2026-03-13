@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { ArrowLeft, Fingerprint, LogOut, User, Shield, MessageCircle, Save, Trash2, Download, Upload } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db, WhatsAppTemplate } from '@/lib/supabase';
-import { TEMPLATE_VARIABLES, getDefaultTemplate } from '@/lib/whatsappTemplates';
+import { getDefaultTemplate, getTemplateVariables } from '@/lib/whatsappTemplates';
 
 type Category = 'EDITING' | 'EXPOSING' | 'OTHER';
 type TemplateMode = 'JOB_STATUS' | 'PAYMENT_STATUS' | 'CUSTOMER_SUMMARY';
@@ -455,7 +455,7 @@ export default function SettingsPage() {
           <div className="mb-3">
             <p className="text-xs text-slate-300 mb-2">Variables (tap to insert)</p>
             <div className="flex flex-wrap gap-2">
-              {TEMPLATE_VARIABLES.map((v) => (
+              {getTemplateVariables(category).map((v) => (
                 <button
                   key={v}
                   type="button"

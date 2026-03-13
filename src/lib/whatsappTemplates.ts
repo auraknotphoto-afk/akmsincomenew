@@ -3,21 +3,56 @@ import { db, Job, WhatsAppTemplate } from '@/lib/supabase';
 export type TemplateCategory = 'EDITING' | 'EXPOSING' | 'OTHER';
 export type TemplateType = 'JOB_STATUS' | 'PAYMENT_STATUS' | 'CUSTOMER_SUMMARY';
 
-export const TEMPLATE_VARIABLES = [
+const COMMON_VARIABLES = [
   '{customer_name}',
   '{customer_phone}',
   '{category}',
   '{event_type}',
-  '{type_of_work}',
   '{start_date}',
+  '{end_date}',
+  '{estimated_due_date}',
   '{total_price}',
   '{amount_paid}',
   '{balance}',
-  '{entries_count}',
-  '{entries_details}',
+  '{notes}',
   '{job_status}',
   '{payment_status}',
+  '{entries_count}',
+  '{entries_details}',
 ];
+
+const EXPOSING_VARIABLES = [
+  '{studio_name}',
+  '{event_location}',
+  '{session_type}',
+  '{exposure_type}',
+  '{expose_type}',
+  '{camera_type}',
+];
+
+const EDITING_VARIABLES = [
+  '{client_name}',
+  '{number_of_cameras}',
+  '{camera_type}',
+  '{duration_hours}',
+  '{rate_per_hour}',
+  '{additional_work_type}',
+  '{additional_work_custom}',
+  '{additional_work_rate}',
+  '{priority}',
+];
+
+const OTHER_VARIABLES = [
+  '{type_of_work}',
+  '{expense}',
+  '{profit}',
+];
+
+export function getTemplateVariables(category: TemplateCategory) {
+  if (category === 'EXPOSING') return [...COMMON_VARIABLES, ...EXPOSING_VARIABLES];
+  if (category === 'EDITING') return [...COMMON_VARIABLES, ...EDITING_VARIABLES];
+  return [...COMMON_VARIABLES, ...OTHER_VARIABLES];
+}
 
 function formatCurrency(value: number): string {
   return value.toLocaleString('en-IN');
@@ -128,11 +163,30 @@ export async function buildWhatsAppMessage(params: {
     customer_phone: job.customer_phone || '',
     category: category,
     event_type: job.event_type || job.type_of_work || '',
+    client_name: job.client_name || '',
+    number_of_cameras: job.number_of_cameras ? String(job.number_of_cameras) : '',
+    duration_hours: job.duration_hours ? String(job.duration_hours) : '',
+    rate_per_hour: job.rate_per_hour ? String(job.rate_per_hour) : '',
+    additional_work_type: job.additional_work_type || '',
+    additional_work_custom: job.additional_work_custom || '',
+    additional_work_rate: job.additional_work_rate ? String(job.additional_work_rate) : '',
+    priority: job.priority || '',
+    studio_name: job.studio_name || '',
+    event_location: job.event_location || '',
+    session_type: job.session_type || '',
+    exposure_type: job.exposure_type || '',
+    expose_type: job.expose_type || '',
+    camera_type: job.camera_type || '',
     type_of_work: job.type_of_work || '',
     start_date: formatDate(job.start_date),
+    end_date: formatDate(job.end_date),
+    estimated_due_date: formatDate(job.estimated_due_date),
     total_price: formatCurrency(job.total_price || 0),
     amount_paid: formatCurrency(job.amount_paid || 0),
     balance: formatCurrency((job.total_price || 0) - (job.amount_paid || 0)),
+    expense: formatCurrency(job.expense || 0),
+    profit: formatCurrency((job.total_price || 0) - (job.expense || 0)),
+    notes: job.notes || '',
     job_status: getStatusLabel(category, 'job', selectedJobStatus),
     payment_status: getStatusLabel(category, 'payment', selectedPaymentStatus),
   };
@@ -173,11 +227,30 @@ export async function buildCustomerSummaryMessage(params: {
     customer_phone: group.phone || '',
     category,
     event_type: '',
+    client_name: '',
+    number_of_cameras: '',
+    duration_hours: '',
+    rate_per_hour: '',
+    additional_work_type: '',
+    additional_work_custom: '',
+    additional_work_rate: '',
+    priority: '',
+    studio_name: '',
+    event_location: '',
+    session_type: '',
+    exposure_type: '',
+    expose_type: '',
+    camera_type: '',
     type_of_work: '',
     start_date: '',
+    end_date: '',
+    estimated_due_date: '',
     total_price: formatCurrency(totalAmount),
     amount_paid: formatCurrency(totalPaid),
     balance: formatCurrency(totalPending),
+    expense: '',
+    profit: '',
+    notes: '',
     entries_count: String(group.jobs.length),
     entries_details: lines.join('\n'),
     job_status: '',
