@@ -11,6 +11,7 @@ export default function TrashPage() {
   const { user, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const hardDeleteEnabled = process.env.NEXT_PUBLIC_ENABLE_HARD_DELETE === 'true';
 
   useEffect(() => {
     if (!authLoading && !user?.id) {
@@ -45,6 +46,10 @@ export default function TrashPage() {
   }
 
   async function handlePermanentDelete(id: string) {
+    if (!hardDeleteEnabled) {
+      alert('Permanent delete is disabled to protect data.');
+      return;
+    }
     const typed = window.prompt('Type PERMANENT DELETE to remove forever.');
     if (typed !== 'PERMANENT DELETE') return;
 
@@ -101,13 +106,15 @@ export default function TrashPage() {
                     <RotateCcw className="w-4 h-4" />
                     Restore
                   </button>
-                  <button
-                    onClick={() => handlePermanentDelete(job.id)}
-                    className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-red-600 text-white text-sm"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Delete Forever
-                  </button>
+                  {hardDeleteEnabled && (
+                    <button
+                      onClick={() => handlePermanentDelete(job.id)}
+                      className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-red-600 text-white text-sm"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete Forever
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

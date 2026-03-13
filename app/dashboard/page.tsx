@@ -82,9 +82,9 @@ export default function DashboardPage() {
     totalPending: 0,
     totalJobs: 0,
     byCategory: {
-      EDITING: { income: 0, paid: 0, pending: 0, jobs: 0 },
-      EXPOSING: { income: 0, paid: 0, pending: 0, jobs: 0 },
-      OTHER: { income: 0, paid: 0, pending: 0, jobs: 0 },
+      EDITING: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
+      EXPOSING: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
+      OTHER: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
     },
   });
 
@@ -142,9 +142,9 @@ export default function DashboardPage() {
         totalPending: 0,
         totalJobs: filteredJobs.length,
         byCategory: {
-          EDITING: { income: 0, paid: 0, pending: 0, jobs: 0 },
-          EXPOSING: { income: 0, paid: 0, pending: 0, jobs: 0 },
-          OTHER: { income: 0, paid: 0, pending: 0, jobs: 0 },
+          EDITING: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
+          EXPOSING: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
+          OTHER: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
         },
       };
 
@@ -158,6 +158,9 @@ export default function DashboardPage() {
           newSummary.byCategory[cat].income += job.total_price;
           newSummary.byCategory[cat].paid += job.amount_paid;
           newSummary.byCategory[cat].pending += (job.total_price - job.amount_paid);
+          newSummary.byCategory[cat].profit += job.category === 'OTHER'
+            ? job.total_price - (job.expense || 0)
+            : job.total_price;
           newSummary.byCategory[cat].jobs += 1;
         }
       });
@@ -211,6 +214,7 @@ export default function DashboardPage() {
       subtitle: 'Photo & Video Exposing',
       income: `₹${summary.byCategory.EXPOSING.income.toLocaleString('en-IN')}`,
       pending: `₹${summary.byCategory.EXPOSING.pending.toLocaleString('en-IN')}`,
+      profit: '',
       icon: '📷',
       gradient: 'from-cyan-600 to-blue-600',
       route: '/jobs/exposing',
@@ -221,6 +225,7 @@ export default function DashboardPage() {
       subtitle: 'Editing',
       income: `₹${summary.byCategory.EDITING.income.toLocaleString('en-IN')}`,
       pending: `₹${summary.byCategory.EDITING.pending.toLocaleString('en-IN')}`,
+      profit: '',
       icon: '✨',
       gradient: 'from-purple-600 to-pink-600',
       route: '/jobs/editing',
@@ -231,6 +236,7 @@ export default function DashboardPage() {
       subtitle: 'Additional Income',
       income: `₹${summary.byCategory.OTHER.income.toLocaleString('en-IN')}`,
       pending: `₹${summary.byCategory.OTHER.pending.toLocaleString('en-IN')}`,
+      profit: `Rs.${summary.byCategory.OTHER.profit.toLocaleString('en-IN')}`,
       icon: '💼',
       gradient: 'from-orange-600 to-red-600',
       route: '/jobs/other',
@@ -291,15 +297,14 @@ export default function DashboardPage() {
               <button
                 key={period.value}
                 onClick={() => setSelectedPeriod(period.value)}
-                className={`px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all active:scale-95 ${
+                className={`px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all active:scale-95 whitespace-nowrap ${
                   selectedPeriod === period.value
                     ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25'
                     : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
                 }`}
               >
                 <span className="mr-1 sm:mr-2">{period.icon}</span>
-                <span className="hidden xs:inline">{period.label}</span>
-                <span className="xs:hidden">{period.label.split(' ')[0]}</span>
+                <span>{period.label}</span>
               </button>
             ))}
           </div>
@@ -369,10 +374,23 @@ export default function DashboardPage() {
                       </div>
 
                       <div className="space-y-2 sm:space-y-4 mb-3 sm:mb-6">
-                        <div className="bg-slate-900/50 rounded-lg p-2.5 sm:p-4">
-                          <p className="text-slate-400 text-[10px] sm:text-sm mb-0.5 sm:mb-1">Total Income</p>
-                          <p className="text-lg sm:text-2xl font-bold text-white">{category.income}</p>
-                        </div>
+                        {category.name === 'Other Services' ? (
+                          <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                            <div className="bg-slate-900/50 rounded-lg p-2.5 sm:p-4">
+                              <p className="text-slate-400 text-[10px] sm:text-sm mb-0.5 sm:mb-1">Total Income</p>
+                              <p className="text-lg sm:text-2xl font-bold text-white">{category.income}</p>
+                            </div>
+                            <div className="bg-slate-900/50 rounded-lg p-2.5 sm:p-4">
+                              <p className="text-slate-400 text-[10px] sm:text-sm mb-0.5 sm:mb-1">Total Profit</p>
+                              <p className="text-lg sm:text-2xl font-bold text-emerald-400">{category.profit}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="bg-slate-900/50 rounded-lg p-2.5 sm:p-4">
+                            <p className="text-slate-400 text-[10px] sm:text-sm mb-0.5 sm:mb-1">Total Income</p>
+                            <p className="text-lg sm:text-2xl font-bold text-white">{category.income}</p>
+                          </div>
+                        )}
                         
                         <div className="grid grid-cols-2 gap-2 sm:gap-3">
                           <div className="bg-slate-900/50 rounded-lg p-2 sm:p-3">
@@ -569,3 +587,6 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+
+

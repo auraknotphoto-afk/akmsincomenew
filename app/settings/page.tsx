@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Fingerprint, LogOut, User, Shield, MessageCircle, Save, Trash2, Mail } from 'lucide-react';
+import { ArrowLeft, Fingerprint, LogOut, User, Shield, MessageCircle, Save, Trash2, Download, Upload } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { db, WhatsAppTemplate } from '@/lib/supabase';
 import { TEMPLATE_VARIABLES, getDefaultTemplate } from '@/lib/whatsappTemplates';
@@ -24,8 +24,9 @@ export default function SettingsPage() {
   const [templateText, setTemplateText] = useState('');
   const [saveLoading, setSaveLoading] = useState(false);
   const [defaultLoading, setDefaultLoading] = useState(false);
-  const [backupEmail, setBackupEmail] = useState('');
   const [backupLoading, setBackupLoading] = useState(false);
+  const [restoreLoading, setRestoreLoading] = useState(false);
+  const [restoreMode, setRestoreMode] = useState<'merge' | 'replace'>('merge');
   const [allTemplates, setAllTemplates] = useState<WhatsAppTemplate[]>([]);
 
   useEffect(() => {
@@ -41,15 +42,6 @@ export default function SettingsPage() {
     if (!user?.id) return;
     loadTemplates(user.id);
   }, [user?.id]);
-
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('akms_backup_email');
-      if (saved) setBackupEmail(saved);
-    } catch {
-      // ignore
-    }
-  }, []);
 
   useEffect(() => {
     const found = allTemplates.find(
@@ -199,12 +191,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSendBackupEmail = async () => {
-    const email = backupEmail.trim();
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      alert('Enter a valid backup email address.');
-      return;
-    }
+  const handleDownloadBackup = async () => {
     if (!user?.id) {
       alert('Please sign in again.');
       return;
@@ -212,22 +199,61 @@ export default function SettingsPage() {
 
     setBackupLoading(true);
     try {
-      localStorage.setItem('akms_backup_email', email);
-      const res = await fetch('/api/backup/email', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: email }),
-      });
-      const json = await res.json();
+      const res = await fetch('/api/backup/download');
       if (!res.ok) {
-        throw new Error(json?.error || 'Failed to send backup email');
+        const json = await res.json();
+        throw new Error(json?.error || 'Failed to download backup');
       }
-      alert('Backup email sent successfully.');
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `aura-knot-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      alert(`Failed to send backup: ${msg}`);
+      alert(`Failed to download backup: ${msg}`);
     } finally {
       setBackupLoading(false);
+    }
+  };
+
+  const handleRestoreBackup = async (file: File | null) => {
+    if (!file) return;
+    if (!user?.id) {
+      alert('Please sign in again.');
+      return;
+    }
+
+    setRestoreLoading(true);
+    try {
+      const text = await file.text();
+      const backup = JSON.parse(text);
+
+      const res = await fetch('/api/backup/restore', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          backup,
+          mode: restoreMode,
+        }),
+      });
+
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json?.error || 'Failed to restore backup');
+      }
+
+      alert('Backup restored successfully.');
+      await loadTemplates(user.id);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      alert(`Failed to restore backup: ${msg}`);
+    } finally {
+      setRestoreLoading(false);
     }
   };
 
@@ -322,28 +348,60 @@ export default function SettingsPage() {
 
         <div className="bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
           <h2 className="text-base sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
-            <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-sky-400" />
-            Backup To Email
+            <Download className="w-4 h-4 sm:w-5 sm:h-5 text-sky-400" />
+            Manual Backup
           </h2>
           <p className="text-slate-300 text-sm mb-3">
-            Send your jobs and WhatsApp templates as backup attachments (JSON + CSV).
+            Download your jobs and WhatsApp templates as a backup JSON file.
           </p>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <input
-              type="email"
-              value={backupEmail}
-              onChange={(e) => setBackupEmail(e.target.value)}
-              placeholder="you@example.com"
-              className="flex-1 px-3 py-2 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/50"
-            />
-            <button
-              onClick={handleSendBackupEmail}
-              disabled={backupLoading}
-              className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-sky-600 text-white font-medium disabled:opacity-60"
+          <p className="text-slate-400 text-xs mb-3">
+            The downloaded file also includes a `jobs_csv` section for spreadsheet import.
+          </p>
+          <button
+            onClick={handleDownloadBackup}
+            disabled={backupLoading}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-sky-600 text-white font-medium disabled:opacity-60"
+          >
+            <Download className="w-4 h-4" />
+            {backupLoading ? 'Preparing...' : 'Download Backup'}
+          </button>
+        </div>
+
+        <div className="bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+          <h2 className="text-base sm:text-lg font-bold text-white mb-3 sm:mb-4 flex items-center gap-2">
+            <Upload className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
+            Restore Backup
+          </h2>
+          <p className="text-slate-300 text-sm mb-3">
+            Upload a downloaded backup JSON file and restore it into Supabase.
+          </p>
+          <p className="text-slate-400 text-xs mb-3">
+            `Merge` keeps existing data. `Replace` clears your current jobs and templates before restore.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+            <select
+              value={restoreMode}
+              onChange={(e) => setRestoreMode(e.target.value as 'merge' | 'replace')}
+              className="px-3 py-2 rounded-xl bg-white/10 border border-white/20 text-white"
             >
-              <Mail className="w-4 h-4" />
-              {backupLoading ? 'Sending...' : 'Send Backup Now'}
-            </button>
+              <option value="merge" className="bg-slate-800">Merge Restore</option>
+              <option value="replace" className="bg-slate-800">Replace Restore</option>
+            </select>
+            <label className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 text-white font-medium cursor-pointer">
+              <Upload className="w-4 h-4" />
+              {restoreLoading ? 'Restoring...' : 'Choose Backup File'}
+              <input
+                type="file"
+                accept="application/json"
+                className="hidden"
+                disabled={restoreLoading}
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  void handleRestoreBackup(file);
+                  e.currentTarget.value = '';
+                }}
+              />
+            </label>
           </div>
         </div>
 

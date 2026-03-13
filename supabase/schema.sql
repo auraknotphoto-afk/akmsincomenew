@@ -84,7 +84,8 @@ CREATE TABLE IF NOT EXISTS jobs (
   expose_type VARCHAR(100),
   
   -- Other Income Fields
-  type_of_work VARCHAR(255)
+  type_of_work VARCHAR(255),
+  expense DECIMAL(12, 2) NOT NULL DEFAULT 0
 );
 
 -- =============================================
@@ -130,6 +131,7 @@ ALTER TABLE jobs ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS estimated_due_date DATE;
 -- Ensure priority column exists for deployments missing it
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS priority VARCHAR(20) DEFAULT 'NORMAL';
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS expense DECIMAL(12, 2) NOT NULL DEFAULT 0;
 
 -- =============================================
 -- FUNCTION: Auto-update updated_at timestamp

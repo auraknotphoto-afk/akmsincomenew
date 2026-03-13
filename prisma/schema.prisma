@@ -56,6 +56,7 @@ model Job {
   
   // Other Income
   typeOfWork      String?
+  expense         Float      @default(0)
   customerPhone   String?
   notes           String?
   

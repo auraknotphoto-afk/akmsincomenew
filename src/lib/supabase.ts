@@ -48,6 +48,7 @@ export interface Job {
   additional_work_type?: string;
   additional_work_custom?: string;
   additional_work_rate?: number;
+  expense?: number;
   total_price: number;
   amount_paid: number;
   payment_status: 'PENDING' | 'PARTIAL' | 'COMPLETED';
@@ -244,6 +245,7 @@ export const db = {
       additional_work_type: (job as any).additional_work_type || null,
       additional_work_custom: (job as any).additional_work_custom || null,
       additional_work_rate: (job as any).additional_work_rate ?? null,
+      expense: (job as any).expense ?? 0,
       notes: job.notes || null,
     };
     
@@ -527,9 +529,9 @@ export const db = {
       totalPending: 0,
       totalJobs: jobs.length,
       byCategory: {
-        EDITING: { income: 0, paid: 0, pending: 0, jobs: 0 },
-        EXPOSING: { income: 0, paid: 0, pending: 0, jobs: 0 },
-        OTHER: { income: 0, paid: 0, pending: 0, jobs: 0 },
+        EDITING: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
+        EXPOSING: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
+        OTHER: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
       },
       statusCounts: {
         pending: 0,
@@ -547,6 +549,9 @@ export const db = {
       summary.byCategory[cat].income += job.total_price;
       summary.byCategory[cat].paid += job.amount_paid;
       summary.byCategory[cat].pending += (job.total_price - job.amount_paid);
+      summary.byCategory[cat].profit += job.category === 'OTHER'
+        ? job.total_price - (job.expense || 0)
+        : job.total_price;
       summary.byCategory[cat].jobs += 1;
 
       if (job.status === 'PENDING') summary.statusCounts.pending++;

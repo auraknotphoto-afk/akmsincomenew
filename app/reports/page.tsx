@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import jsPDF from 'jspdf';
 import { ArrowLeft, Calendar, Download, FileSpreadsheet, FileText, TrendingUp, Filter, PieChart } from 'lucide-react';
 import { db, Job } from '@/lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -14,8 +15,25 @@ type CategorySummary = {
   totalIncome: number;
   totalPaid: number;
   totalPending: number;
+  totalProfit: number;
   icon: string;
   color: string;
+};
+
+type PdfReportType = 'financial' | 'customer';
+
+const REPORT_MARGIN = 4;
+const REPORT_LOGO_WIDTH = 907;
+const REPORT_LOGO_HEIGHT = 126;
+const REPORT_LOGO_RATIO = REPORT_LOGO_WIDTH / REPORT_LOGO_HEIGHT;
+const REPORT_THEME = {
+  gold: [219, 161, 52] as const,
+  black: [255, 255, 255] as const,
+  text: [35, 35, 35] as const,
+  muted: [102, 102, 102] as const,
+  border: [222, 198, 140] as const,
+  soft: [252, 248, 239] as const,
+  paper: [255, 252, 247] as const,
 };
 
 function getDateRange(period: TimePeriod): { start: Date; end: Date; label: string } {
@@ -105,6 +123,82 @@ function getMonthlyBreakdown(jobs: Job[]): { month: string; income: number; paid
     }));
 }
 
+function formatCurrency(value: number) {
+  return `Rs.${value.toLocaleString('en-IN')}`;
+}
+
+function formatDisplayDate(value?: string) {
+  if (!value) return '-';
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString('en-IN');
+}
+
+function buildCustomerReport(jobs: Job[]) {
+  const customerMap = new Map<
+    string,
+    {
+      name: string;
+      phone: string;
+      totalIncome: number;
+      totalPaid: number;
+      totalPending: number;
+      jobs: Job[];
+    }
+  >();
+
+  jobs.forEach((job) => {
+    const key = `${job.customer_name || ''}-${job.customer_phone || ''}`;
+    const existing = customerMap.get(key);
+    if (existing) {
+      existing.totalIncome += job.total_price;
+      existing.totalPaid += job.amount_paid;
+      existing.totalPending += job.total_price - job.amount_paid;
+      existing.jobs.push(job);
+      return;
+    }
+
+    customerMap.set(key, {
+      name: job.customer_name || 'Unknown Customer',
+      phone: job.customer_phone || '-',
+      totalIncome: job.total_price,
+      totalPaid: job.amount_paid,
+      totalPending: job.total_price - job.amount_paid,
+      jobs: [job],
+    });
+  });
+
+  return Array.from(customerMap.values()).sort((a, b) => b.totalIncome - a.totalIncome);
+}
+
+async function blobToDataUrl(blob: Blob) {
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(String(reader.result || ''));
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
+}
+
+async function loadReportLogo() {
+  const candidates = ['/ak-logo-final.png', '/report-logo.png', '/logo.png', '/brand-logo.png'];
+  for (const path of candidates) {
+    try {
+      const res = await fetch(path);
+      if (!res.ok) continue;
+      const blob = await res.blob();
+      return await blobToDataUrl(blob);
+    } catch {
+      // Ignore missing logo candidates and keep trying.
+    }
+  }
+  return null;
+}
+
+function fitText(text: string, max = 30) {
+  if (text.length <= max) return text;
+  return `${text.slice(0, max - 1)}...`;
+}
+
 export default function ReportsPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuth();
@@ -116,6 +210,7 @@ export default function ReportsPage() {
     endDate: new Date().toISOString().split('T')[0],
   });
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [pdfExportLoading, setPdfExportLoading] = useState<PdfReportType | null>(null);
 
   const periods: { value: TimePeriod; label: string; icon: string }[] = [
     { value: 'this_month', label: 'This Month', icon: '📅' },
@@ -140,8 +235,11 @@ export default function ReportsPage() {
   async function fetchData(userId: string) {
     setLoading(true);
     try {
-      const category = selectedCategory === 'ALL' ? undefined : selectedCategory;
-      const data = await db.getJobs(userId, category as any);
+      const category =
+        selectedCategory === 'ALL'
+          ? undefined
+          : (selectedCategory as 'EDITING' | 'EXPOSING' | 'OTHER');
+      const data = await db.getJobs(userId, category);
       
       // Get date range
       let start: Date, end: Date;
@@ -186,6 +284,7 @@ export default function ReportsPage() {
       totalIncome: jobs.filter(j => j.category === 'EDITING').reduce((acc, j) => acc + j.total_price, 0),
       totalPaid: jobs.filter(j => j.category === 'EDITING').reduce((acc, j) => acc + j.amount_paid, 0),
       totalPending: jobs.filter(j => j.category === 'EDITING').reduce((acc, j) => acc + (j.total_price - j.amount_paid), 0),
+      totalProfit: jobs.filter(j => j.category === 'EDITING').reduce((acc, j) => acc + (j.total_price - (j.expense || 0)), 0),
     },
     {
       category: 'EXPOSING',
@@ -195,6 +294,7 @@ export default function ReportsPage() {
       totalIncome: jobs.filter(j => j.category === 'EXPOSING').reduce((acc, j) => acc + j.total_price, 0),
       totalPaid: jobs.filter(j => j.category === 'EXPOSING').reduce((acc, j) => acc + j.amount_paid, 0),
       totalPending: jobs.filter(j => j.category === 'EXPOSING').reduce((acc, j) => acc + (j.total_price - j.amount_paid), 0),
+      totalProfit: jobs.filter(j => j.category === 'EXPOSING').reduce((acc, j) => acc + (j.total_price - (j.expense || 0)), 0),
     },
     {
       category: 'OTHER',
@@ -204,6 +304,7 @@ export default function ReportsPage() {
       totalIncome: jobs.filter(j => j.category === 'OTHER').reduce((acc, j) => acc + j.total_price, 0),
       totalPaid: jobs.filter(j => j.category === 'OTHER').reduce((acc, j) => acc + j.amount_paid, 0),
       totalPending: jobs.filter(j => j.category === 'OTHER').reduce((acc, j) => acc + (j.total_price - j.amount_paid), 0),
+      totalProfit: jobs.filter(j => j.category === 'OTHER').reduce((acc, j) => acc + (j.total_price - (j.expense || 0)), 0),
     },
   ];
 
@@ -219,17 +320,6 @@ export default function ReportsPage() {
   const periodLabel = selectedPeriod === 'custom' 
     ? `${customDateRange.startDate} to ${customDateRange.endDate}`
     : getDateRange(selectedPeriod).label;
-
-  function exportToPDF() {
-    const content = generateReportContent();
-    const blob = new Blob([content], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `aura-knot-report-${periodLabel.replace(/\s/g, '-')}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
 
   function exportToCSV() {
     const headers = ['Date', 'Category', 'Customer', 'Type of Work', 'Total Price', 'Amount Paid', 'Balance', 'Payment Status', 'Job Status'];
@@ -255,48 +345,353 @@ export default function ReportsPage() {
     URL.revokeObjectURL(url);
   }
 
-  function generateReportContent() {
-    return `
-AURA KNOT PHOTOGRAPHY - INCOME REPORT
-=====================================
-Report Period: ${periodLabel}
-Generated: ${new Date().toLocaleString('en-IN')}
+  function drawReportFrame(
+    doc: jsPDF,
+    title: string,
+    subtitle: string,
+    logoDataUrl: string | null
+  ) {
+    const width = doc.internal.pageSize.getWidth();
+    const height = doc.internal.pageSize.getHeight();
 
-SUMMARY
--------
-Total Jobs: ${totals.jobs}
-Total Income: ₹${totals.income.toLocaleString('en-IN')}
-Amount Received: ₹${totals.paid.toLocaleString('en-IN')}
-Pending Amount: ₹${totals.pending.toLocaleString('en-IN')}
+    doc.setFillColor(...REPORT_THEME.paper);
+    doc.rect(0, 0, width, height, 'F');
 
-CATEGORY BREAKDOWN
-------------------
-${categorySummaries.map(c => `
-${c.icon} ${c.category}
-  Jobs: ${c.totalJobs}
-  Total Income: ₹${c.totalIncome.toLocaleString('en-IN')}
-  Received: ₹${c.totalPaid.toLocaleString('en-IN')}
-  Pending: ₹${c.totalPending.toLocaleString('en-IN')}
-`).join('\n')}
+    doc.setFillColor(...REPORT_THEME.black);
+    doc.rect(0, 0, width, 30, 'F');
+    doc.setFillColor(...REPORT_THEME.gold);
+    doc.rect(0, 30, width, 2.4, 'F');
 
-MONTHLY BREAKDOWN
------------------
-${monthlyBreakdown.map(m => `
-${m.month}
-  Income: ₹${m.income.toLocaleString('en-IN')}
-  Received: ₹${m.paid.toLocaleString('en-IN')}
-  Pending: ₹${m.pending.toLocaleString('en-IN')}
-`).join('\n')}
+    doc.setDrawColor(...REPORT_THEME.gold);
+    doc.setLineWidth(0.6);
+    doc.line(REPORT_MARGIN, 38.5, width - REPORT_MARGIN, 38.5);
 
-DETAILED TRANSACTIONS
----------------------
-${jobs.map(j => `
-[${j.start_date}] ${j.category}
-  Customer: ${j.customer_name}
-  Total: ₹${j.total_price.toLocaleString('en-IN')} | Paid: ₹${j.amount_paid.toLocaleString('en-IN')} | Balance: ₹${(j.total_price - j.amount_paid).toLocaleString('en-IN')}
-  Status: ${j.status} | Payment: ${j.payment_status}
-`).join('\n')}
-`;
+    if (logoDataUrl) {
+      const maxLogoWidth = 82;
+      const maxLogoHeight = 11.4;
+      const logoWidth = Math.min(maxLogoWidth, maxLogoHeight * REPORT_LOGO_RATIO);
+      const logoHeight = logoWidth / REPORT_LOGO_RATIO;
+      doc.addImage(logoDataUrl, 'PNG', REPORT_MARGIN + 2, 8.8, logoWidth, logoHeight);
+    } else {
+      doc.setFillColor(...REPORT_THEME.gold);
+      doc.circle(REPORT_MARGIN + 12, 15, 8, 'F');
+      doc.setTextColor(...REPORT_THEME.text);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.text('AK', REPORT_MARGIN + 8.7, 16.5);
+    }
+
+    doc.setTextColor(...REPORT_THEME.text);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(15);
+    doc.text(title.toUpperCase(), width - REPORT_MARGIN - 3, 11, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.text(subtitle, width - REPORT_MARGIN - 3, 17, { align: 'right' });
+
+    doc.setTextColor(...REPORT_THEME.text);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('Prepared for studio records and client-ready reporting', REPORT_MARGIN, 36);
+  }
+
+  function addPageFooter(doc: jsPDF) {
+    const width = doc.internal.pageSize.getWidth();
+    const height = doc.internal.pageSize.getHeight();
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i += 1) {
+      doc.setPage(i);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(...REPORT_THEME.muted);
+      doc.text(`Page ${i} of ${pageCount}`, width - REPORT_MARGIN - 10, height - 4.5);
+    }
+  }
+
+  function drawSummaryGrid(
+    doc: jsPDF,
+    items: { label: string; value: string }[],
+    startY: number
+  ) {
+    const widths = [68, 68, 68, 68];
+    const totalWidth = widths.reduce((sum, item) => sum + item, 0);
+    let x = REPORT_MARGIN;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setFillColor(...REPORT_THEME.black);
+    doc.rect(REPORT_MARGIN, startY - 4, totalWidth, 6.5, 'F');
+    items.forEach((item, index) => {
+      doc.setDrawColor(...REPORT_THEME.gold);
+      doc.rect(x, startY - 4, widths[index], 6.5, 'S');
+      doc.setTextColor(...REPORT_THEME.text);
+      doc.text(item.label, x + 2, startY);
+      x += widths[index];
+    });
+
+    const nextY = startY + 5.5;
+    return drawTableRow(
+      doc,
+      items.map((item) => item.value),
+      widths,
+      nextY,
+      false
+    );
+  }
+
+  function drawSectionTitle(doc: jsPDF, title: string, y: number) {
+    const width = doc.internal.pageSize.getWidth();
+    doc.setFillColor(...REPORT_THEME.black);
+    doc.roundedRect(REPORT_MARGIN, y - 4.5, width - REPORT_MARGIN * 2, 7.5, 1.5, 1.5, 'F');
+    doc.setFillColor(...REPORT_THEME.gold);
+    doc.rect(REPORT_MARGIN, y - 4.5, 24, 7.5, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10.5);
+    doc.setTextColor(...REPORT_THEME.text);
+    doc.text(title.toUpperCase(), REPORT_MARGIN + 28, y);
+    return y + 7.5;
+  }
+
+  function drawTableHeader(doc: jsPDF, headers: string[], widths: number[], y: number) {
+    const totalWidth = widths.reduce((sum, item) => sum + item, 0);
+    let x = REPORT_MARGIN;
+    const topY = y - 3.8;
+    const rowHeight = 6;
+    doc.setFillColor(...REPORT_THEME.black);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.2);
+    doc.rect(REPORT_MARGIN, topY, totalWidth, rowHeight, 'F');
+    doc.setDrawColor(...REPORT_THEME.gold);
+    doc.rect(REPORT_MARGIN, topY, totalWidth, rowHeight);
+    headers.forEach((header, index) => {
+      if (index > 0) {
+        doc.line(x, topY, x, topY + rowHeight);
+      }
+      doc.setTextColor(...REPORT_THEME.text);
+      doc.text(header, x + 2, y);
+      x += widths[index];
+    });
+    return y + 5.5;
+  }
+
+  function drawTableRow(doc: jsPDF, values: string[], widths: number[], y: number, shaded = false) {
+    let x = REPORT_MARGIN;
+    const totalWidth = widths.reduce((sum, item) => sum + item, 0);
+    const topY = y - 3.8;
+    const rowHeight = 5.6;
+    if (shaded) {
+      doc.setFillColor(248, 248, 248);
+      doc.rect(REPORT_MARGIN, topY, totalWidth, rowHeight, 'F');
+    }
+    doc.setTextColor(...REPORT_THEME.text);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.8);
+    doc.setDrawColor(...REPORT_THEME.border);
+    doc.line(REPORT_MARGIN, topY + rowHeight, REPORT_MARGIN + totalWidth, topY + rowHeight);
+    doc.line(REPORT_MARGIN, topY, REPORT_MARGIN, topY + rowHeight);
+    values.forEach((value, index) => {
+      if (index > 0) {
+        doc.line(x, topY, x, topY + rowHeight);
+      }
+      doc.text(fitText(value, Math.max(10, Math.floor(widths[index] / 2.1))), x + 1.5, y);
+      x += widths[index];
+    });
+    doc.line(REPORT_MARGIN + totalWidth, topY, REPORT_MARGIN + totalWidth, topY + rowHeight);
+    return y + 5;
+  }
+
+  function ensurePdfPage(
+    doc: jsPDF,
+    y: number,
+    title: string,
+    subtitle: string,
+    logoDataUrl: string | null,
+    minBottom = 28
+  ) {
+    const height = doc.internal.pageSize.getHeight();
+    if (y <= height - minBottom) return y;
+    doc.addPage();
+    drawReportFrame(doc, title, subtitle, logoDataUrl);
+    return 44;
+  }
+
+  async function exportFinancialPDF(logoDataUrl: string | null) {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const title = 'Financial Report';
+    const subtitle = `${periodLabel}  |  Generated ${new Date().toLocaleDateString('en-IN')}`;
+    drawReportFrame(doc, title, subtitle, logoDataUrl);
+    let y = 44;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...REPORT_THEME.text);
+    doc.text('Financial Summary Snapshot', REPORT_MARGIN, y + 2);
+    y = drawSummaryGrid(
+      doc,
+      [
+        { label: 'Total Jobs', value: String(totals.jobs) },
+        { label: 'Total Income', value: formatCurrency(totals.income) },
+        { label: 'Amount Received', value: formatCurrency(totals.paid) },
+        { label: 'Pending Amount', value: formatCurrency(totals.pending) },
+      ],
+      y + 8
+    );
+
+    y = drawSectionTitle(doc, 'Category Breakdown', y + 5);
+    y = drawTableHeader(doc, ['Category', 'Jobs', 'Income', 'Paid', 'Pending', 'Profit'], [50, 22, 45, 45, 45, 45], y);
+    categorySummaries.forEach((category, index) => {
+      y = ensurePdfPage(doc, y, title, subtitle, logoDataUrl);
+      y = drawTableRow(
+        doc,
+        [
+          category.category,
+          String(category.totalJobs),
+          formatCurrency(category.totalIncome),
+          formatCurrency(category.totalPaid),
+          formatCurrency(category.totalPending),
+          formatCurrency(category.totalProfit),
+        ],
+        [50, 22, 45, 45, 45, 45],
+        y,
+        index % 2 === 0
+      );
+    });
+
+    y = drawSectionTitle(doc, 'Monthly Breakdown', y + 3);
+    y = drawTableHeader(doc, ['Month', 'Income', 'Paid', 'Pending'], [72, 66, 66, 66], y);
+    monthlyBreakdown.forEach((month, index) => {
+      y = ensurePdfPage(doc, y, title, subtitle, logoDataUrl);
+      y = drawTableRow(
+        doc,
+        [
+          month.month,
+          formatCurrency(month.income),
+          formatCurrency(month.paid),
+          formatCurrency(month.pending),
+        ],
+        [72, 66, 66, 66],
+        y,
+        index % 2 === 0
+      );
+    });
+
+    y = drawSectionTitle(doc, 'Transactions', y + 3);
+    y = drawTableHeader(doc, ['Date', 'Studio/Customer Name', 'Category', 'Total Amount', 'Amount Paid', 'Balance', 'Profit'], [26, 82, 30, 36, 36, 36, 36], y);
+    jobs.forEach((job, index) => {
+      y = ensurePdfPage(doc, y, title, subtitle, logoDataUrl);
+      y = drawTableRow(
+        doc,
+        [
+          formatDisplayDate(job.end_date || job.start_date),
+          job.customer_name,
+          job.category,
+          formatCurrency(job.total_price),
+          formatCurrency(job.amount_paid),
+          formatCurrency(job.total_price - job.amount_paid),
+          formatCurrency(job.total_price - (job.expense || 0)),
+        ],
+        [26, 82, 30, 36, 36, 36, 36],
+        y,
+        index % 2 === 0
+      );
+    });
+
+    addPageFooter(doc);
+    doc.save(`financial-report-${periodLabel.replace(/\s+/g, '-').toLowerCase()}.pdf`);
+  }
+
+  async function exportCustomerPDF(logoDataUrl: string | null) {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const title = 'Customer Report';
+    const subtitle = `${periodLabel}  |  Generated ${new Date().toLocaleDateString('en-IN')}`;
+    const customerReport = buildCustomerReport(jobs);
+
+    drawReportFrame(doc, title, subtitle, logoDataUrl);
+    let y = 44;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...REPORT_THEME.text);
+    doc.text('Customer Summary Snapshot', REPORT_MARGIN, y + 2);
+    y = drawSummaryGrid(
+      doc,
+      [
+        { label: 'Total Customers', value: String(customerReport.length) },
+        { label: 'Total Entries', value: String(jobs.length) },
+        { label: 'Total Amount', value: formatCurrency(totals.income) },
+        { label: 'Balance Pending', value: formatCurrency(totals.pending) },
+      ],
+      y + 8
+    );
+
+    y = drawSectionTitle(doc, 'Customer Overview', y + 5);
+    y = drawTableHeader(
+      doc,
+      ['Studio/Customer Name', 'Phone Number', 'Entries Count', 'Total Amount', 'Amount Paid', 'Balance Pending'],
+      [70, 38, 24, 44, 44, 50],
+      y
+    );
+    customerReport.forEach((customer, index) => {
+      y = ensurePdfPage(doc, y, title, subtitle, logoDataUrl);
+      y = drawTableRow(
+        doc,
+        [
+          customer.name,
+          customer.phone,
+          String(customer.jobs.length),
+          formatCurrency(customer.totalIncome),
+          formatCurrency(customer.totalPaid),
+          formatCurrency(customer.totalPending),
+        ],
+        [70, 38, 24, 44, 44, 50],
+        y,
+        index % 2 === 0
+      );
+    });
+
+    y = drawSectionTitle(doc, 'Customer Entries', y + 4);
+    y = drawTableHeader(
+      doc,
+      ['Studio/Customer Name', 'Work/Event', 'Category', 'Date', 'Total Amount', 'Amount Paid', 'Balance'],
+      [50, 62, 28, 28, 34, 34, 34],
+      y
+    );
+    jobs.forEach((job, index) => {
+      const workLabel = job.event_type || job.type_of_work || job.studio_name || job.category;
+      y = ensurePdfPage(doc, y, title, subtitle, logoDataUrl);
+      y = drawTableRow(
+        doc,
+        [
+          job.customer_name,
+          workLabel,
+          job.category,
+          formatDisplayDate(job.end_date || job.start_date),
+          formatCurrency(job.total_price),
+          formatCurrency(job.amount_paid),
+          formatCurrency(job.total_price - job.amount_paid),
+        ],
+        [50, 62, 28, 28, 34, 34, 34],
+        y,
+        index % 2 === 0
+      );
+    });
+
+    addPageFooter(doc);
+    doc.save(`customer-report-${periodLabel.replace(/\s+/g, '-').toLowerCase()}.pdf`);
+  }
+
+  async function exportToPDF(type: PdfReportType) {
+    setPdfExportLoading(type);
+    try {
+      const logoDataUrl = await loadReportLogo();
+      if (type === 'customer') {
+        await exportCustomerPDF(logoDataUrl);
+        return;
+      }
+      await exportFinancialPDF(logoDataUrl);
+    } finally {
+      setPdfExportLoading(null);
+    }
   }
 
   return (
@@ -320,8 +715,11 @@ ${jobs.map(j => `
               <button onClick={exportToCSV} className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-white/10 text-white font-medium text-xs sm:text-sm hover:bg-white/20 transition-colors active:scale-95">
                 <FileSpreadsheet className="w-4 h-4 sm:w-5 sm:h-5" /> <span className="hidden sm:inline">CSV</span>
               </button>
-              <button onClick={exportToPDF} className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold text-xs sm:text-sm hover:shadow-lg hover:shadow-indigo-500/25 transition-all active:scale-95">
-                <Download className="w-4 h-4 sm:w-5 sm:h-5" /> Export
+              <button onClick={() => exportToPDF('financial')} disabled={pdfExportLoading !== null} className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold text-xs sm:text-sm hover:shadow-lg hover:shadow-indigo-500/25 transition-all active:scale-95 disabled:opacity-60">
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5" /> <span className="hidden sm:inline">{pdfExportLoading === 'financial' ? 'Preparing...' : 'Financial PDF'}</span><span className="sm:hidden">PDF 1</span>
+              </button>
+              <button onClick={() => exportToPDF('customer')} disabled={pdfExportLoading !== null} className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 text-white font-semibold text-xs sm:text-sm hover:shadow-lg hover:shadow-emerald-500/25 transition-all active:scale-95 disabled:opacity-60">
+                <Download className="w-4 h-4 sm:w-5 sm:h-5" /> <span className="hidden sm:inline">{pdfExportLoading === 'customer' ? 'Preparing...' : 'Customer PDF'}</span><span className="sm:hidden">PDF 2</span>
               </button>
             </div>
           </div>
@@ -622,3 +1020,4 @@ ${jobs.map(j => `
     </div>
   );
 }
+

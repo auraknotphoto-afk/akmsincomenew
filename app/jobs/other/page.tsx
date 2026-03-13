@@ -51,6 +51,7 @@ function OtherPageContent() {
     end_date: string;
     estimated_due_date: string;
     total_price: number;
+    expense: number;
     amount_paid: number;
     payment_status: 'PENDING' | 'PARTIAL' | 'COMPLETED';
     status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
@@ -63,6 +64,7 @@ function OtherPageContent() {
     end_date: '',
     estimated_due_date: '',
     total_price: 0,
+    expense: 0,
     amount_paid: 0,
     payment_status: 'PENDING',
     status: 'PENDING',
@@ -134,6 +136,7 @@ function OtherPageContent() {
         end_date: '',
         estimated_due_date: '',
         total_price: 0,
+        expense: 0,
         amount_paid: 0,
         payment_status: 'PENDING',
         status: 'PENDING',
@@ -184,6 +187,7 @@ function OtherPageContent() {
       end_date: job.end_date || '',
       estimated_due_date: (job as any).estimated_due_date || '',
       total_price: job.total_price,
+      expense: job.expense || 0,
       amount_paid: job.amount_paid,
       payment_status: job.payment_status,
       status: job.status,
@@ -203,6 +207,7 @@ function OtherPageContent() {
       end_date: '',
       estimated_due_date: '',
       total_price: 0,
+      expense: 0,
       amount_paid: 0,
       payment_status: 'PENDING',
       status: 'PENDING',
@@ -227,6 +232,7 @@ function OtherPageContent() {
   };
 
   const balance = formData.total_price - formData.amount_paid;
+  const profit = formData.total_price - formData.expense;
 
   const getStatusDisplay = (status: string) => {
     if (status === 'PENDING') return 'Yet to Start';
@@ -532,9 +538,24 @@ function OtherPageContent() {
                 </div>
 
                 <div>
+                  <label className="block text-xs sm:text-sm font-medium text-orange-300 mb-1.5 sm:mb-2">Expense (INR)</label>
+                  <div className="relative">
+                    <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-orange-400" />
+                    <input type="number" min="0" value={formData.expense} onChange={(e) => setFormData({ ...formData, expense: parseFloat(e.target.value) || 0 })} className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-orange-500 touch-manipulation" placeholder="0" />
+                  </div>
+                </div>
+
+                <div>
                   <label className="block text-xs sm:text-sm font-medium text-orange-300 mb-1.5 sm:mb-2">Balance (INR)</label>
                   <div className={`px-4 py-2.5 sm:py-3 rounded-xl font-bold text-base sm:text-lg ${balance > 0 ? 'bg-amber-500/20 text-amber-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                    ₹{balance.toLocaleString('en-IN')}
+                    Rs.{balance.toLocaleString('en-IN')}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-orange-300 mb-1.5 sm:mb-2">Profit (INR)</label>
+                  <div className={`px-4 py-2.5 sm:py-3 rounded-xl font-bold text-base sm:text-lg ${profit >= 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+                    Rs.{profit.toLocaleString('en-IN')}
                   </div>
                 </div>
 
@@ -638,6 +659,7 @@ function OtherPageContent() {
             groupedCustomers.map((group) => {
               const totalIncome = group.jobs.reduce((s, j) => s + j.total_price, 0);
               const totalPaid = group.jobs.reduce((s, j) => s + j.amount_paid, 0);
+              const totalProfit = group.jobs.reduce((s, j) => s + (j.total_price - (j.expense || 0)), 0);
               return (
                 <div
                   key={group.key}
@@ -662,6 +684,9 @@ function OtherPageContent() {
                     </div>
                     <div className="text-right">
                       <p className="text-xl font-bold text-white">Rs.{totalIncome.toLocaleString('en-IN')}</p>
+                      <p className="text-sm text-emerald-400">
+                        Profit: Rs.{totalProfit.toLocaleString('en-IN')}
+                      </p>
                       <p className="text-sm text-amber-400">
                         Pending: Rs.{(totalIncome - totalPaid).toLocaleString('en-IN')}
                       </p>
@@ -728,10 +753,16 @@ function OtherPageContent() {
                   <div className="flex justify-between items-center">
                     <div>
                       <p className="text-lg font-bold text-white">Total Price (INR)
-                        <span className="block text-2xl">₹{job.total_price.toLocaleString('en-IN')}</span>
+                        <span className="block text-2xl">Rs.{job.total_price.toLocaleString('en-IN')}</span>
+                      </p>
+                      <p className="text-xs text-slate-300">
+                        Expense (INR): Rs.{(job.expense || 0).toLocaleString('en-IN')}
+                      </p>
+                      <p className="text-xs text-emerald-400">
+                        Profit (INR): Rs.{(job.total_price - (job.expense || 0)).toLocaleString('en-IN')}
                       </p>
                       <p className={`text-xs ${job.payment_status === 'COMPLETED' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                        Balance (INR): ₹{(job.total_price - job.amount_paid).toLocaleString('en-IN')}
+                        Balance (INR): Rs.{(job.total_price - job.amount_paid).toLocaleString('en-IN')}
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5">
@@ -774,9 +805,15 @@ function OtherPageContent() {
                     <div className="flex items-center gap-4">
                     <div className="text-right">
                       <p className="text-sm text-orange-300">Total Price (INR)</p>
-                      <p className="text-2xl font-bold text-white">₹{job.total_price.toLocaleString('en-IN')}</p>
+                      <p className="text-2xl font-bold text-white">Rs.{job.total_price.toLocaleString('en-IN')}</p>
+                      <p className="text-sm text-slate-300">
+                        Expense (INR): Rs.{(job.expense || 0).toLocaleString('en-IN')}
+                      </p>
+                      <p className="text-sm text-emerald-400">
+                        Profit (INR): Rs.{(job.total_price - (job.expense || 0)).toLocaleString('en-IN')}
+                      </p>
                       <p className={`text-sm ${job.payment_status === 'COMPLETED' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                        Balance (INR): ₹{(job.total_price - job.amount_paid).toLocaleString('en-IN')}
+                        Balance (INR): Rs.{(job.total_price - job.amount_paid).toLocaleString('en-IN')}
                       </p>
                     </div>
                     <button onClick={() => openWhatsAppDialog(job)} className="p-2 rounded-lg bg-green-500/20 text-green-400 hover:bg-green-500/30 transition-colors active:scale-95" title="WhatsApp">
@@ -870,3 +907,5 @@ function OtherPageContent() {
     </div>
   );
 }
+
+

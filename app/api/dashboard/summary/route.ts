@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { JobCategory, PaymentStatus } from '@prisma/client';
+import { JobCategory } from '@prisma/client';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-config';
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     const userId = session?.user?.id;
@@ -16,6 +16,9 @@ export async function GET(req: NextRequest) {
     const jobs = await prisma.job.findMany({
       where: { userId },
     });
+    const otherJobs = jobs.filter((j) => j.category === JobCategory.OTHER) as Array<
+      (typeof jobs)[number] & { expense?: number | null }
+    >;
 
     // Calculate cumulative totals
     const totalIncome = jobs.reduce((sum, job) => sum + job.totalPrice, 0);
@@ -41,12 +44,9 @@ export async function GET(req: NextRequest) {
           .reduce((sum, j) => sum + j.balanceAmount, 0),
       },
       OTHER: {
-        income: jobs
-          .filter((j) => j.category === JobCategory.OTHER)
-          .reduce((sum, j) => sum + j.totalPrice, 0),
-        pending: jobs
-          .filter((j) => j.category === JobCategory.OTHER)
-          .reduce((sum, j) => sum + j.balanceAmount, 0),
+        income: otherJobs.reduce((sum, j) => sum + j.totalPrice, 0),
+        pending: otherJobs.reduce((sum, j) => sum + j.balanceAmount, 0),
+        profit: otherJobs.reduce((sum, j) => sum + (j.totalPrice - (j.expense || 0)), 0),
       },
     };
 
