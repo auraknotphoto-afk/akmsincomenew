@@ -117,7 +117,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (jobs.length) {
-      const normalizedJobs = jobs.map((job) => normalizeJob(userId, job as BackupJob));
+      const normalizedJobs = (jobs as BackupJob[]).map((job) => normalizeJob(userId, job));
       const jobsUpsertRes = await supabase.from('jobs').upsert(normalizedJobs, {
         onConflict: 'id',
       });
