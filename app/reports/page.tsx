@@ -864,11 +864,20 @@ export default function ReportsPage() {
                   {monthlyBreakdown.map((month, index) => (
                     <div key={index} className="bg-white/5 rounded-lg p-3">
                       <p className="text-white font-medium text-sm mb-2">{month.month}</p>
-                      <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div>
+                      <div className="grid grid-cols-1 gap-2 text-xs">
+                        <div className="flex items-center justify-between">
                           <p className="text-gray-400">Income</p>
-                          <p className="text-blue-400 font-medium">₹{month.income.toLocaleString('en-IN')}</p>
+                          <p className="text-blue-400 font-medium">Rs.{month.income.toLocaleString('en-IN')}</p>
                         </div>
+                        <div className="flex items-center justify-between">
+                          <p className="text-gray-400">Received</p>
+                          <p className="text-emerald-400 font-medium">Rs.{month.paid.toLocaleString('en-IN')}</p>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <p className="text-gray-400">Pending</p>
+                          <p className="text-amber-400 font-medium">Rs.{month.pending.toLocaleString('en-IN')}</p>
+                        </div>
+                      </div>
                         <div>
                           <p className="text-gray-400">Received</p>
                           <p className="text-emerald-400 font-medium">₹{month.paid.toLocaleString('en-IN')}</p>
@@ -1020,4 +1029,6 @@ export default function ReportsPage() {
     </div>
   );
 }
+
+
 

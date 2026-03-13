@@ -375,7 +375,7 @@ export default function DashboardPage() {
 
                       <div className="space-y-2 sm:space-y-4 mb-3 sm:mb-6">
                         {category.name === 'Other Services' ? (
-                          <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                             <div className="bg-slate-900/50 rounded-lg p-2.5 sm:p-4">
                               <p className="text-slate-400 text-[10px] sm:text-sm mb-0.5 sm:mb-1">Total Income</p>
                               <p className="text-lg sm:text-2xl font-bold text-white">{category.income}</p>
