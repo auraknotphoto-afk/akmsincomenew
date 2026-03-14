@@ -93,7 +93,7 @@ function OtherPageContent() {
 
   async function fetchJobs(userId: string) {
     try {
-      const data = await db.getJobs(userId, 'OTHER');
+      const data = await db.getJobs(userId, 'ADDON');
       setJobs(data);
       // Fetch all jobs for consolidated reminder
       const allData = await db.getJobs(userId);
@@ -123,7 +123,7 @@ function OtherPageContent() {
         const newJob = await db.createJob({
           ...formData,
           user_id: user.id,
-          category: 'OTHER',
+          category: 'ADDON',
         });
         console.log('Job created successfully:', newJob.id);
       }
@@ -256,7 +256,7 @@ function OtherPageContent() {
     const phone = job.customer_phone?.replace(/[^0-9]/g, '') || '';
     const message = await buildWhatsAppMessage({
       userId: user.id,
-      category: 'OTHER',
+      category: 'ADDON',
       updateType,
       selectedJobStatus,
       selectedPaymentStatus,
@@ -289,7 +289,7 @@ function OtherPageContent() {
     }
     const message = await buildCustomerSummaryMessage({
       userId: user.id,
-      category: 'OTHER',
+      category: 'ADDON',
       group,
     });
 
@@ -384,7 +384,7 @@ function OtherPageContent() {
               </button>
               <div>
                 <h1 className="text-lg sm:text-2xl font-bold text-white flex items-center gap-2 sm:gap-3">
-                  <span className="text-xl sm:text-3xl">💼</span> Other Income
+                  <span className="text-xl sm:text-3xl">💼</span> Add-on Income
                 </h1>
                 <p className="text-orange-300 text-xs sm:text-sm mt-0.5 sm:mt-1 hidden sm:block">Additional services & miscellaneous</p>
               </div>
@@ -415,7 +415,7 @@ function OtherPageContent() {
         {/* Form */}
         {showForm && (
           <div className="mb-6 sm:mb-8 bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl p-4 sm:p-6">
-            <h2 className="text-lg sm:text-xl font-bold text-white mb-4 sm:mb-6">{editingJob ? 'Edit Income Entry' : 'New Other Income'}</h2>
+            <h2 className="text-lg sm:text-xl font-bold text-white mb-4 sm:mb-6">{editingJob ? 'Edit Income Entry' : 'New Add-on Income'}</h2>
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {/* Customer Name with Autofill */}
@@ -577,7 +577,7 @@ function OtherPageContent() {
                             start_date: formData.start_date,
                             total_price: formData.total_price,
                             amount_paid: formData.amount_paid,
-                            category: 'OTHER'
+                            category: 'ADDON'
                           });
                           openWhatsAppUrl(generateWhatsAppUrl(formData.customer_phone, message));
                         }}
@@ -608,7 +608,7 @@ function OtherPageContent() {
                             start_date: formData.start_date,
                             total_price: formData.total_price,
                             amount_paid: formData.amount_paid,
-                            category: 'OTHER'
+                            category: 'ADDON'
                           });
                           openWhatsAppUrl(generateWhatsAppUrl(formData.customer_phone, message));
                         }}
@@ -647,7 +647,7 @@ function OtherPageContent() {
           ) : jobs.length === 0 ? (
             <div className="text-center py-12 sm:py-16 bg-white/5 backdrop-blur border border-white/10 rounded-xl sm:rounded-2xl">
               <span className="text-5xl sm:text-6xl">💼</span>
-              <h3 className="text-lg sm:text-xl font-bold text-white mt-4">No Other Income Yet</h3>
+              <h3 className="text-lg sm:text-xl font-bold text-white mt-4">No Add-on Income Yet</h3>
               <p className="text-orange-300 mt-2 text-sm sm:text-base">Click "Add Income" to create your first entry</p>
             </div>
           ) : !isCustomerView && filteredJobs.length === 0 ? (

@@ -1,6 +1,6 @@
 import { db, Job, WhatsAppTemplate } from '@/lib/supabase';
 
-export type TemplateCategory = 'EDITING' | 'EXPOSING' | 'OTHER';
+export type TemplateCategory = 'EDITING' | 'EXPOSING' | 'ADDON';
 export type TemplateType = 'JOB_STATUS' | 'PAYMENT_STATUS' | 'CUSTOMER_SUMMARY';
 
 const EMOJI_CODEPOINTS: Record<string, number[]> = {
@@ -173,7 +173,7 @@ export function getDefaultTemplate(
   if (templateType === 'CUSTOMER_SUMMARY') {
     return (
       `Hi {customer_name},\n` +
-      `Here is your pending summary for ${category.toLowerCase()}:\n\n` +
+      `Here is your pending summary for ${category === 'ADDON' ? 'add-on' : category.toLowerCase()}:\n\n` +
       `{entries_details}\n\n` +
       `Total Entries: {entries_count}\n` +
       `Total Amount: Rs.{total_price}\n` +
@@ -186,8 +186,9 @@ export function getDefaultTemplate(
     .replace(/_/g, ' ')
     .toLowerCase()
     .replace(/\b\w/g, (m) => m.toUpperCase());
+  const categoryLabel = category === 'ADDON' ? 'add-on' : category.toLowerCase();
   if (templateType === 'JOB_STATUS') {
-    return `Hi {customer_name}, your ${category.toLowerCase()} job status is ${label}.\nEvent Details: {event_details}`;
+    return `Hi {customer_name}, your ${categoryLabel} job status is ${label}.\nEvent Details: {event_details}`;
   }
   return `Hi {customer_name}, your payment status is ${label}. Total: Rs.{total_price}, Paid: Rs.{amount_paid}, Balance: Rs.{balance}.`;
 }

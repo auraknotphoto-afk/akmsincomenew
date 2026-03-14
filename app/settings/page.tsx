@@ -7,7 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { db, WhatsAppTemplate } from '@/lib/supabase';
 import { getDefaultTemplate, getTemplateVariables } from '@/lib/whatsappTemplates';
 
-type Category = 'EDITING' | 'EXPOSING' | 'OTHER';
+type Category = 'EDITING' | 'EXPOSING' | 'ADDON';
 type TemplateMode = 'JOB_STATUS' | 'PAYMENT_STATUS' | 'CUSTOMER_SUMMARY';
 
 const COMMON_EMOJIS = [
@@ -218,12 +218,12 @@ export default function SettingsPage() {
     if (!user?.id) return;
     setDefaultLoading(true);
     try {
-      const categories: Category[] = ['EXPOSING', 'EDITING', 'OTHER'];
+      const categories: Category[] = ['EXPOSING', 'EDITING', 'ADDON'];
       const paymentKeys = ['PENDING', 'PARTIAL', 'COMPLETED'];
       const jobKeysByCategory: Record<Category, string[]> = {
         EXPOSING: ['BOOKED', 'CANCELLED'],
         EDITING: ['PENDING', 'IN_PROGRESS', 'COMPLETED'],
-        OTHER: ['PENDING', 'IN_PROGRESS', 'COMPLETED'],
+        ADDON: ['PENDING', 'IN_PROGRESS', 'COMPLETED'],
       };
 
       for (const cat of categories) {
@@ -520,7 +520,7 @@ export default function SettingsPage() {
               >
                 <option value="EXPOSING" className="bg-slate-800">Exposing</option>
                 <option value="EDITING" className="bg-slate-800">Editing</option>
-                <option value="OTHER" className="bg-slate-800">Other</option>
+                <option value="ADDON" className="bg-slate-800">Add-on Income</option>
               </select>
             </div>
             <div>

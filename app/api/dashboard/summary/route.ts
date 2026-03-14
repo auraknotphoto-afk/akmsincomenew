@@ -16,7 +16,7 @@ export async function GET(_req: NextRequest) {
     const jobs = await prisma.job.findMany({
       where: { userId },
     });
-    const otherJobs = jobs.filter((j) => j.category === JobCategory.OTHER) as Array<
+    const addonJobs = jobs.filter((j) => j.category === JobCategory.ADDON) as Array<
       (typeof jobs)[number] & { expense?: number | null }
     >;
 
@@ -43,10 +43,10 @@ export async function GET(_req: NextRequest) {
           .filter((j) => j.category === JobCategory.EXPOSING)
           .reduce((sum, j) => sum + j.balanceAmount, 0),
       },
-      OTHER: {
-        income: otherJobs.reduce((sum, j) => sum + j.totalPrice, 0),
-        pending: otherJobs.reduce((sum, j) => sum + j.balanceAmount, 0),
-        profit: otherJobs.reduce((sum, j) => sum + (j.totalPrice - (j.expense || 0)), 0),
+      ADDON: {
+        income: addonJobs.reduce((sum, j) => sum + j.totalPrice, 0),
+        pending: addonJobs.reduce((sum, j) => sum + j.balanceAmount, 0),
+        profit: addonJobs.reduce((sum, j) => sum + (j.totalPrice - (j.expense || 0)), 0),
       },
     };
 

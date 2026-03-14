@@ -238,7 +238,7 @@ export default function ReportsPage() {
       const category =
         selectedCategory === 'ALL'
           ? undefined
-          : (selectedCategory as 'EDITING' | 'EXPOSING' | 'OTHER');
+          : (selectedCategory as 'EDITING' | 'EXPOSING' | 'ADDON');
       const data = await db.getJobs(userId, category);
       
       // Get date range
@@ -297,14 +297,14 @@ export default function ReportsPage() {
       totalProfit: jobs.filter(j => j.category === 'EXPOSING').reduce((acc, j) => acc + (j.total_price - (j.expense || 0)), 0),
     },
     {
-      category: 'OTHER',
+      category: 'ADDON',
       icon: '💼',
       color: 'orange',
-      totalJobs: jobs.filter(j => j.category === 'OTHER').length,
-      totalIncome: jobs.filter(j => j.category === 'OTHER').reduce((acc, j) => acc + j.total_price, 0),
-      totalPaid: jobs.filter(j => j.category === 'OTHER').reduce((acc, j) => acc + j.amount_paid, 0),
-      totalPending: jobs.filter(j => j.category === 'OTHER').reduce((acc, j) => acc + (j.total_price - j.amount_paid), 0),
-      totalProfit: jobs.filter(j => j.category === 'OTHER').reduce((acc, j) => acc + (j.total_price - (j.expense || 0)), 0),
+      totalJobs: jobs.filter(j => j.category === 'ADDON').length,
+      totalIncome: jobs.filter(j => j.category === 'ADDON').reduce((acc, j) => acc + j.total_price, 0),
+      totalPaid: jobs.filter(j => j.category === 'ADDON').reduce((acc, j) => acc + j.amount_paid, 0),
+      totalPending: jobs.filter(j => j.category === 'ADDON').reduce((acc, j) => acc + (j.total_price - j.amount_paid), 0),
+      totalProfit: jobs.filter(j => j.category === 'ADDON').reduce((acc, j) => acc + (j.total_price - (j.expense || 0)), 0),
     },
   ];
 
@@ -786,7 +786,7 @@ export default function ReportsPage() {
                 <option value="ALL" className="bg-slate-800">All Categories</option>
                 <option value="EDITING" className="bg-slate-800">🎬 Editing</option>
                 <option value="EXPOSING" className="bg-slate-800">📸 Exposing</option>
-                <option value="OTHER" className="bg-slate-800">💼 Other</option>
+                <option value="ADDON" className="bg-slate-800">💼 Add-on Income</option>
               </select>
             </div>
           </div>

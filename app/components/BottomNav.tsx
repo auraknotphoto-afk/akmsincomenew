@@ -7,7 +7,7 @@ const navItems = [
   { icon: Home, label: 'Home', path: '/dashboard' },
   { icon: Camera, label: 'Exposing', path: '/jobs/exposing' },
   { icon: Sparkles, label: 'Editing', path: '/jobs/editing' },
-  { icon: Briefcase, label: 'Other', path: '/jobs/other' },
+  { icon: Briefcase, label: 'Add-on', path: '/jobs/other' },
   { icon: FileText, label: 'Reports', path: '/reports' },
 ];
 

@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS whatsapp_templates (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  category VARCHAR(20) NOT NULL CHECK (category IN ('EDITING', 'EXPOSING', 'OTHER')),
+  category VARCHAR(20) NOT NULL CHECK (category IN ('EDITING', 'EXPOSING', 'ADDON')),
   template_type VARCHAR(20) NOT NULL CHECK (template_type IN ('JOB_STATUS', 'PAYMENT_STATUS')),
   status_key VARCHAR(30) NOT NULL,
   template_text TEXT NOT NULL,

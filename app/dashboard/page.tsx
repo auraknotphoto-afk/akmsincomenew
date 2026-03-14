@@ -84,7 +84,7 @@ export default function DashboardPage() {
     byCategory: {
       EDITING: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
       EXPOSING: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
-      OTHER: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
+      ADDON: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
     },
   });
 
@@ -144,7 +144,7 @@ export default function DashboardPage() {
         byCategory: {
           EDITING: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
           EXPOSING: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
-          OTHER: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
+          ADDON: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
         },
       };
 
@@ -158,7 +158,7 @@ export default function DashboardPage() {
           newSummary.byCategory[cat].income += job.total_price;
           newSummary.byCategory[cat].paid += job.amount_paid;
           newSummary.byCategory[cat].pending += (job.total_price - job.amount_paid);
-          newSummary.byCategory[cat].profit += job.category === 'OTHER'
+          newSummary.byCategory[cat].profit += job.category === 'ADDON'
             ? job.total_price - (job.expense || 0)
             : job.total_price;
           newSummary.byCategory[cat].jobs += 1;
@@ -232,15 +232,15 @@ export default function DashboardPage() {
       jobs: summary.byCategory.EDITING.jobs,
     },
     {
-      name: 'Other Services',
-      subtitle: 'Additional Income',
-      income: `₹${summary.byCategory.OTHER.income.toLocaleString('en-IN')}`,
-      pending: `₹${summary.byCategory.OTHER.pending.toLocaleString('en-IN')}`,
-      profit: `Rs.${summary.byCategory.OTHER.profit.toLocaleString('en-IN')}`,
+      name: 'Add-on Income',
+      subtitle: 'Add-on Income',
+      income: `₹${summary.byCategory.ADDON.income.toLocaleString('en-IN')}`,
+      pending: `₹${summary.byCategory.ADDON.pending.toLocaleString('en-IN')}`,
+      profit: `Rs.${summary.byCategory.ADDON.profit.toLocaleString('en-IN')}`,
       icon: '💼',
       gradient: 'from-orange-600 to-red-600',
       route: '/jobs/other',
-      jobs: summary.byCategory.OTHER.jobs,
+      jobs: summary.byCategory.ADDON.jobs,
     },
   ];
 
@@ -374,7 +374,7 @@ export default function DashboardPage() {
                       </div>
 
                       <div className="space-y-2 sm:space-y-4 mb-3 sm:mb-6">
-                        {category.name === 'Other Services' ? (
+                        {category.name === 'Add-on Income' ? (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                             <div className="bg-slate-900/50 rounded-lg p-2.5 sm:p-4">
                               <p className="text-slate-400 text-[10px] sm:text-sm mb-0.5 sm:mb-1">Total Income</p>
@@ -469,7 +469,7 @@ export default function DashboardPage() {
                         <Briefcase className="w-5 h-5 text-orange-400" />
                       </div>
                       <div>
-                        <p className="text-white font-semibold">Other</p>
+                        <p className="text-white font-semibold">Add-on</p>
                         <p className="text-slate-400 text-xs">Album, printing, etc.</p>
                       </div>
                     </button>

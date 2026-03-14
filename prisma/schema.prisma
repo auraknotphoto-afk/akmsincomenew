@@ -29,7 +29,7 @@ model Job {
   userId    String
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  // Category: EDITING, EXPOSING, OTHER
+  // Category: EDITING, EXPOSING, ADDON
   category  JobCategory
   
   // Common fields
@@ -55,7 +55,7 @@ model Job {
   sessionType     ExposureSession?
   exposureType    String?
   
-  // Other Income
+  // Add-on Income
   typeOfWork      String?
   expense         Float      @default(0)
   customerPhone   String?
@@ -94,7 +94,7 @@ model Report {
 enum JobCategory {
   EDITING
   EXPOSING
-  OTHER
+  ADDON
 }
 
 enum JobStatus {

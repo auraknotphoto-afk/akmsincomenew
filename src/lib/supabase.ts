@@ -26,7 +26,7 @@ export interface Job {
   created_at: string;
   updated_at: string;
   user_id: string;
-  category: 'EDITING' | 'EXPOSING' | 'OTHER';
+  category: 'EDITING' | 'EXPOSING' | 'ADDON';
   customer_name: string;
   customer_phone?: string;
   event_details?: string;
@@ -72,7 +72,7 @@ export interface WhatsAppTemplate {
   created_at: string;
   updated_at: string;
   user_id: string;
-  category: 'EDITING' | 'EXPOSING' | 'OTHER';
+  category: 'EDITING' | 'EXPOSING' | 'ADDON';
   template_type: 'JOB_STATUS' | 'PAYMENT_STATUS';
   status_key: string;
   template_text: string;
@@ -382,7 +382,7 @@ export const db = {
   // WhatsApp Templates
   async getWhatsAppTemplates(
     userId: string,
-    category?: 'EDITING' | 'EXPOSING' | 'OTHER'
+    category?: 'EDITING' | 'EXPOSING' | 'ADDON'
   ): Promise<WhatsAppTemplate[]> {
     if (!supabase) {
       throw new Error('Supabase is not configured. Storage is Supabase-only.');
@@ -413,7 +413,7 @@ export const db = {
 
   async upsertWhatsAppTemplate(template: {
     user_id: string;
-    category: 'EDITING' | 'EXPOSING' | 'OTHER';
+    category: 'EDITING' | 'EXPOSING' | 'ADDON';
     template_type: 'JOB_STATUS' | 'PAYMENT_STATUS';
     status_key: string;
     template_text: string;
@@ -533,7 +533,7 @@ export const db = {
       byCategory: {
         EDITING: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
         EXPOSING: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
-        OTHER: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
+        ADDON: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
       },
       statusCounts: {
         pending: 0,
@@ -551,7 +551,7 @@ export const db = {
       summary.byCategory[cat].income += job.total_price;
       summary.byCategory[cat].paid += job.amount_paid;
       summary.byCategory[cat].pending += (job.total_price - job.amount_paid);
-      summary.byCategory[cat].profit += job.category === 'OTHER'
+      summary.byCategory[cat].profit += job.category === 'ADDON'
         ? job.total_price - (job.expense || 0)
         : job.total_price;
       summary.byCategory[cat].jobs += 1;

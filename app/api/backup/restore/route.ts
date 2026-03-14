@@ -10,7 +10,10 @@ function normalizeJob(userId: string, job: BackupJob) {
   return {
     id: String(job.id || crypto.randomUUID()),
     user_id: userId,
-    category: String(job.category || 'OTHER'),
+    category:
+      String(job.category || 'ADDON') === 'OTHER'
+        ? 'ADDON'
+        : String(job.category || 'ADDON'),
     customer_name: String(job.customer_name || ''),
     customer_phone: job.customer_phone ? String(job.customer_phone) : null,
     event_details: job.event_details ? String(job.event_details) : null,
@@ -52,7 +55,10 @@ function normalizeJob(userId: string, job: BackupJob) {
 function normalizeTemplate(userId: string, template: BackupTemplate) {
   return {
     user_id: userId,
-    category: String(template.category || 'EXPOSING'),
+    category:
+      String(template.category || 'EXPOSING') === 'OTHER'
+        ? 'ADDON'
+        : String(template.category || 'EXPOSING'),
     template_type: String(template.template_type || 'JOB_STATUS'),
     status_key: String(template.status_key || 'PENDING'),
     template_text: String(template.template_text || ''),

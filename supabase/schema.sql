@@ -47,8 +47,8 @@ CREATE TABLE IF NOT EXISTS jobs (
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   
-  -- Job Category: EDITING, EXPOSING, or OTHER
-  category VARCHAR(20) NOT NULL CHECK (category IN ('EDITING', 'EXPOSING', 'OTHER')),
+  -- Job Category: EDITING, EXPOSING, or ADDON
+  category VARCHAR(20) NOT NULL CHECK (category IN ('EDITING', 'EXPOSING', 'ADDON')),
   
   -- Common Fields
   customer_name VARCHAR(255) NOT NULL,
@@ -84,7 +84,7 @@ CREATE TABLE IF NOT EXISTS jobs (
   exposure_type VARCHAR(100),
   expose_type VARCHAR(100),
   
-  -- Other Income Fields
+  -- Add-on Income Fields
   type_of_work VARCHAR(255),
   expense DECIMAL(12, 2) NOT NULL DEFAULT 0
 );
@@ -97,7 +97,7 @@ CREATE TABLE IF NOT EXISTS whatsapp_templates (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  category VARCHAR(20) NOT NULL CHECK (category IN ('EDITING', 'EXPOSING', 'OTHER')),
+  category VARCHAR(20) NOT NULL CHECK (category IN ('EDITING', 'EXPOSING', 'ADDON')),
   template_type VARCHAR(20) NOT NULL CHECK (template_type IN ('JOB_STATUS', 'PAYMENT_STATUS')),
   status_key VARCHAR(30) NOT NULL,
   template_text TEXT NOT NULL,
