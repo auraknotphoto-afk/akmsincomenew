@@ -86,6 +86,10 @@ function getJobDetailHref(job: Job) {
   return customerKey ? `${categoryPath}?customer=${encodeURIComponent(customerKey)}` : categoryPath;
 }
 
+function getJobEventDetailsLabel(job: Job) {
+  return job.event_details?.trim() || job.type_of_work?.trim() || '-';
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const { isAuthenticated, loading: authLoading, logout, user } = useAuth();
@@ -552,6 +556,7 @@ export default function DashboardPage() {
                             <div>
                               <p className="text-white font-semibold text-sm">{job.customer_name}</p>
                               <p className="text-slate-400 text-xs mt-1">Date: {formatJobDate(job.end_date || job.start_date)}</p>
+                              <p className="text-slate-300 text-xs mt-1">Event Details: {getJobEventDetailsLabel(job)}</p>
                             </div>
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
                               job.category === 'EDITING' ? 'bg-purple-500/20 text-purple-400' :
@@ -578,6 +583,7 @@ export default function DashboardPage() {
                           <tr>
                             <th className="text-left py-3 px-4 text-xs font-medium text-slate-400">Date</th>
                             <th className="text-left py-3 px-4 text-xs font-medium text-slate-400">Customer</th>
+                            <th className="text-left py-3 px-4 text-xs font-medium text-slate-400">Event Details</th>
                             <th className="text-left py-3 px-4 text-xs font-medium text-slate-400">Category</th>
                             <th className="text-right py-3 px-4 text-xs font-medium text-slate-400">Amount</th>
                             <th className="text-center py-3 px-4 text-xs font-medium text-slate-400">Job Status</th>
@@ -592,6 +598,7 @@ export default function DashboardPage() {
                             >
                               <td className="py-3 px-4 text-sm text-white">{formatJobDate(job.end_date || job.start_date)}</td>
                               <td className="py-3 px-4 text-sm text-white">{job.customer_name}</td>
+                              <td className="py-3 px-4 text-sm text-slate-300">{getJobEventDetailsLabel(job)}</td>
                               <td className="py-3 px-4">
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                   job.category === 'EDITING' ? 'bg-purple-500/20 text-purple-400' :
@@ -639,6 +646,7 @@ export default function DashboardPage() {
                             <div>
                               <p className="text-white font-semibold text-sm">{job.customer_name}</p>
                               <p className="text-slate-400 text-xs mt-1">Date: {formatJobDate(job.end_date || job.start_date)}</p>
+                              <p className="text-slate-300 text-xs mt-1">Event Details: {getJobEventDetailsLabel(job)}</p>
                             </div>
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
                               job.category === 'EDITING' ? 'bg-purple-500/20 text-purple-400' :
@@ -665,6 +673,7 @@ export default function DashboardPage() {
                           <tr>
                             <th className="text-left py-3 px-4 text-xs font-medium text-slate-400">Date</th>
                             <th className="text-left py-3 px-4 text-xs font-medium text-slate-400">Customer</th>
+                            <th className="text-left py-3 px-4 text-xs font-medium text-slate-400">Event Details</th>
                             <th className="text-left py-3 px-4 text-xs font-medium text-slate-400">Category</th>
                             <th className="text-right py-3 px-4 text-xs font-medium text-slate-400">Balance</th>
                             <th className="text-center py-3 px-4 text-xs font-medium text-slate-400">Payment Status</th>
@@ -679,6 +688,7 @@ export default function DashboardPage() {
                             >
                               <td className="py-3 px-4 text-sm text-white">{formatJobDate(job.end_date || job.start_date)}</td>
                               <td className="py-3 px-4 text-sm text-white">{job.customer_name}</td>
+                              <td className="py-3 px-4 text-sm text-slate-300">{getJobEventDetailsLabel(job)}</td>
                               <td className="py-3 px-4">
                                 <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                   job.category === 'EDITING' ? 'bg-purple-500/20 text-purple-400' :
