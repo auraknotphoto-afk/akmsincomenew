@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Plus, Camera, Calendar, User, IndianRupee, MapPin, Trash2, Building2, Phone, Edit2, MessageCircle } from 'lucide-react';
 import { db, Job } from '@/lib/supabase';
@@ -169,26 +169,7 @@ function ExposingPageContent() {
         console.log('Job created successfully:', newJob.id);
       }
       
-      setFormData({
-        customer_name: '',
-        customer_phone: '',
-        event_details: '',
-        studio_name: '',
-        event_type: '',
-        event_location: '',
-        start_date: '',
-        end_date: '',
-        estimated_due_date: '',
-        session_type: 'FULL_SESSION',
-        exposure_type: '',
-        expose_type: '',
-        camera_type: '',
-        total_price: 0,
-        amount_paid: 0,
-        payment_status: 'PENDING',
-        status: 'PENDING',
-        notes: '',
-      });
+      setFormData(getDefaultFormData());
       setCustomEventType('');
       setShowCustomEventInput(false);
       setShowForm(false);
@@ -251,26 +232,7 @@ function ExposingPageContent() {
 
   function handleCancelEdit() {
     setEditingJob(null);
-    setFormData({
-      customer_name: '',
-      customer_phone: '',
-      event_details: '',
-      studio_name: '',
-      event_type: '',
-      event_location: '',
-      start_date: '',
-      end_date: '',
-      estimated_due_date: '',
-      session_type: 'FULL_SESSION',
-      exposure_type: '',
-      expose_type: '',
-      camera_type: '',
-      total_price: 0,
-      amount_paid: 0,
-      payment_status: 'PENDING',
-      status: 'PENDING',
-      notes: '',
-    });
+    setFormData(getDefaultFormData());
     setCustomEventType('');
     setShowCustomEventInput(false);
     setShowForm(false);
@@ -398,6 +360,57 @@ function ExposingPageContent() {
   const customerJobs = isCustomerView
     ? jobs.filter((j) => customerKeyForJob(j) === selectedCustomerKey)
     : [];
+  const selectedCustomer = useMemo(() => {
+    if (!isCustomerView) return null;
+    return groupedCustomers.find((group) => group.key === selectedCustomerKey) ||
+      (customerJobs[0]
+        ? {
+            key: selectedCustomerKey || customerKeyForJob(customerJobs[0]),
+            name: customerJobs[0].customer_name,
+            phone: customerJobs[0].customer_phone || '',
+            jobs: customerJobs,
+          }
+        : null);
+  }, [customerJobs, groupedCustomers, isCustomerView, selectedCustomerKey]);
+  const selectedCustomerName = selectedCustomer?.name || '';
+  const selectedCustomerPhone = selectedCustomer?.phone || '';
+
+  function getDefaultFormData() {
+    return {
+      customer_name: selectedCustomerName,
+      customer_phone: selectedCustomerPhone,
+      event_details: '',
+      studio_name: '',
+      event_type: '',
+      event_location: '',
+      start_date: '',
+      end_date: '',
+      estimated_due_date: '',
+      session_type: 'FULL_SESSION',
+      exposure_type: '',
+      expose_type: '',
+      camera_type: '',
+      total_price: 0,
+      amount_paid: 0,
+      payment_status: 'PENDING' as const,
+      status: 'PENDING' as const,
+      notes: '',
+    };
+  }
+
+  useEffect(() => {
+    if (!showForm || !!editingJob || !selectedCustomerName) return;
+    setFormData((prev) => {
+      if (prev.customer_name === selectedCustomerName && prev.customer_phone === selectedCustomerPhone) {
+        return prev;
+      }
+      return {
+        ...prev,
+        customer_name: selectedCustomerName || prev.customer_name,
+        customer_phone: selectedCustomerPhone || prev.customer_phone,
+      };
+    });
+  }, [showForm, editingJob, selectedCustomerName, selectedCustomerPhone]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-cyan-900 to-slate-900">
@@ -416,7 +429,13 @@ function ExposingPageContent() {
                 <p className="text-cyan-300 text-xs sm:text-sm mt-0.5 sm:mt-1 hidden sm:block">Photo and video exposing</p>
               </div>
             </div>
-            <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-semibold text-sm sm:text-base hover:shadow-lg hover:shadow-cyan-500/25 transition-all active:scale-95 touch-manipulation">
+            <button onClick={() => {
+              if (!showForm) {
+                setEditingJob(null);
+                setFormData(getDefaultFormData());
+              }
+              setShowForm(!showForm);
+            }} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-semibold text-sm sm:text-base hover:shadow-lg hover:shadow-cyan-500/25 transition-all active:scale-95 touch-manipulation">
               <Plus className="w-4 h-4 sm:w-5 sm:h-5" /> <span className="hidden sm:inline">Add</span> Session
             </button>
           </div>

@@ -69,6 +69,23 @@ function getDateRange(period: TimePeriod): { start: Date; end: Date; label: stri
   }
 }
 
+function formatJobDate(value?: string) {
+  if (!value) return '-';
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day).toLocaleDateString('en-IN');
+}
+
+function getJobDetailHref(job: Job) {
+  const categoryPath = job.category === 'EDITING'
+    ? '/jobs/editing'
+    : job.category === 'EXPOSING'
+      ? '/jobs/exposing'
+      : '/jobs/other';
+
+  const customerKey = job.customer_phone?.trim() || job.customer_name?.trim();
+  return customerKey ? `${categoryPath}?customer=${encodeURIComponent(customerKey)}` : categoryPath;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const { isAuthenticated, loading: authLoading, logout, user } = useAuth();
@@ -82,9 +99,9 @@ export default function DashboardPage() {
     totalPending: 0,
     totalJobs: 0,
     byCategory: {
-      EDITING: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
-      EXPOSING: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
-      ADDON: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
+      EDITING: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0, pendingJobs: 0 },
+      EXPOSING: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0, pendingJobs: 0 },
+      ADDON: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0, pendingJobs: 0 },
     },
   });
 
@@ -142,9 +159,9 @@ export default function DashboardPage() {
         totalPending: 0,
         totalJobs: filteredJobs.length,
         byCategory: {
-          EDITING: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
-          EXPOSING: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
-          ADDON: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0 },
+          EDITING: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0, pendingJobs: 0 },
+          EXPOSING: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0, pendingJobs: 0 },
+          ADDON: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0, pendingJobs: 0 },
         },
       };
 
@@ -162,6 +179,14 @@ export default function DashboardPage() {
             ? job.total_price - (job.expense || 0)
             : job.total_price;
           newSummary.byCategory[cat].jobs += 1;
+          const countsAsPendingJob =
+            job.category === 'EXPOSING'
+              ? false
+              : job.status !== 'COMPLETED';
+
+          if (countsAsPendingJob) {
+            newSummary.byCategory[cat].pendingJobs += 1;
+          }
         }
       });
 
@@ -219,6 +244,7 @@ export default function DashboardPage() {
       gradient: 'from-cyan-600 to-blue-600',
       route: '/jobs/exposing',
       jobs: summary.byCategory.EXPOSING.jobs,
+      pendingJobs: summary.byCategory.EXPOSING.pendingJobs,
     },
     {
       name: 'Post-Production',
@@ -230,6 +256,7 @@ export default function DashboardPage() {
       gradient: 'from-purple-600 to-pink-600',
       route: '/jobs/editing',
       jobs: summary.byCategory.EDITING.jobs,
+      pendingJobs: summary.byCategory.EDITING.pendingJobs,
     },
     {
       name: 'Add-on Income',
@@ -241,10 +268,17 @@ export default function DashboardPage() {
       gradient: 'from-orange-600 to-red-600',
       route: '/jobs/other',
       jobs: summary.byCategory.ADDON.jobs,
+      pendingJobs: summary.byCategory.ADDON.pendingJobs,
     },
   ];
 
   const { label: periodLabel } = getDateRange(selectedPeriod);
+  const pendingWorkJobs = jobs
+    .filter((job) => job.category !== 'EXPOSING' && job.status !== 'COMPLETED')
+    .sort((a, b) => (a.end_date || a.start_date).localeCompare(b.end_date || b.start_date));
+  const pendingPaymentJobs = jobs
+    .filter((job) => job.payment_status !== 'COMPLETED')
+    .sort((a, b) => (a.end_date || a.start_date).localeCompare(b.end_date || b.start_date));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -392,10 +426,14 @@ export default function DashboardPage() {
                           </div>
                         )}
                         
-                        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                        <div className="grid grid-cols-3 gap-2 sm:gap-3">
                           <div className="bg-slate-900/50 rounded-lg p-2 sm:p-3">
                             <p className="text-slate-400 text-[10px] sm:text-xs mb-0.5 sm:mb-1">Pending</p>
                             <p className="text-sm sm:text-lg font-bold text-amber-400">{category.pending}</p>
+                          </div>
+                          <div className="bg-slate-900/50 rounded-lg p-2 sm:p-3">
+                            <p className="text-slate-400 text-[10px] sm:text-xs mb-0.5 sm:mb-1">Pending Jobs</p>
+                            <p className="text-sm sm:text-lg font-bold text-rose-300">{category.pendingJobs}</p>
                           </div>
                           <div className="bg-slate-900/50 rounded-lg p-2 sm:p-3">
                             <p className="text-slate-400 text-[10px] sm:text-xs mb-0.5 sm:mb-1">Jobs</p>
@@ -492,95 +530,181 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            {/* Recent Jobs */}
-            {jobs.length > 0 && (
-              <div className="mt-4 sm:mt-8">
-                <h2 className="text-base sm:text-xl font-bold text-white mb-3 sm:mb-4">Recent Jobs ({periodLabel})</h2>
-                
-                {/* Mobile Card View */}
-                <div className="sm:hidden space-y-3">
-                  {jobs.slice(0, 5).map((job) => {
-                    const dateStr = job.end_date || job.start_date;
-                    const [year, month, day] = dateStr.split('-').map(Number);
-                    const displayDate = new Date(year, month - 1, day).toLocaleDateString('en-IN');
-                    return (
-                    <div key={job.id} className="bg-slate-800/50 backdrop-blur border border-slate-700/50 rounded-xl p-4">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <p className="text-white font-semibold text-sm">{job.customer_name}</p>
-                          <p className="text-slate-400 text-xs">{displayDate}</p>
-                        </div>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                          job.category === 'EDITING' ? 'bg-purple-500/20 text-purple-400' :
-                          job.category === 'EXPOSING' ? 'bg-cyan-500/20 text-cyan-400' :
-                          'bg-orange-500/20 text-orange-400'
-                        }`}>
-                          {job.category}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <p className="text-white font-bold text-base">₹{job.total_price.toLocaleString('en-IN')}</p>
-                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                          job.payment_status === 'COMPLETED' ? 'bg-emerald-500/20 text-emerald-400' :
-                          job.payment_status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' :
-                          'bg-red-500/20 text-red-400'
-                        }`}>
-                          {job.payment_status}
-                        </span>
-                      </div>
+            <div className="mt-4 sm:mt-8 grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
+              <div className="bg-slate-800/50 backdrop-blur border border-slate-700/50 rounded-xl overflow-hidden">
+                <div className="p-4 sm:p-5 border-b border-slate-700/40">
+                  <h2 className="text-base sm:text-xl font-bold text-white">Pending Jobs ({periodLabel})</h2>
+                  <p className="text-slate-400 text-xs sm:text-sm mt-1">Open work entries across all categories</p>
+                </div>
+                {pendingWorkJobs.length === 0 ? (
+                  <div className="p-6 text-slate-400 text-sm">No pending jobs in this period.</div>
+                ) : (
+                  <>
+                    <div className="sm:hidden space-y-3 p-4">
+                      {pendingWorkJobs.slice(0, 8).map((job) => (
+                        <button
+                          key={job.id}
+                          type="button"
+                          onClick={() => router.push(getJobDetailHref(job))}
+                          className="w-full text-left bg-slate-900/50 rounded-xl p-3 transition-colors hover:bg-slate-800/80 active:scale-[0.99]"
+                        >
+                          <div className="flex justify-between items-start gap-3">
+                            <div>
+                              <p className="text-white font-semibold text-sm">{job.customer_name}</p>
+                              <p className="text-slate-400 text-xs mt-1">Date: {formatJobDate(job.end_date || job.start_date)}</p>
+                            </div>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                              job.category === 'EDITING' ? 'bg-purple-500/20 text-purple-400' :
+                              job.category === 'EXPOSING' ? 'bg-cyan-500/20 text-cyan-400' :
+                              'bg-orange-500/20 text-orange-400'
+                            }`}>
+                              {job.category}
+                            </span>
+                          </div>
+                          <div className="mt-2 flex items-center justify-between">
+                            <p className="text-white text-sm font-bold">Rs.{job.total_price.toLocaleString('en-IN')}</p>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                              job.status === 'IN_PROGRESS' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'
+                            }`}>
+                              {job.status}
+                            </span>
+                          </div>
+                        </button>
+                      ))}
                     </div>
-                  )})}
-                </div>
-                
-                {/* Desktop Table View */}
-                <div className="hidden sm:block bg-slate-800/50 backdrop-blur border border-slate-700/50 rounded-xl overflow-hidden">
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-slate-700/30">
-                        <tr>
-                          <th className="text-left py-3 px-4 text-xs font-medium text-slate-400">Event End Date</th>
-                          <th className="text-left py-3 px-4 text-xs font-medium text-slate-400">Customer</th>
-                          <th className="text-left py-3 px-4 text-xs font-medium text-slate-400">Category</th>
-                          <th className="text-right py-3 px-4 text-xs font-medium text-slate-400">Amount</th>
-                          <th className="text-center py-3 px-4 text-xs font-medium text-slate-400">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-700/30">
-                        {jobs.slice(0, 5).map((job) => {
-                          const dateStr = job.end_date || job.start_date;
-                          const [year, month, day] = dateStr.split('-').map(Number);
-                          const displayDate = new Date(year, month - 1, day).toLocaleDateString('en-IN');
-                          return (
-                          <tr key={job.id} className="hover:bg-slate-700/20 transition-colors">
-                            <td className="py-3 px-4 text-sm text-white">{displayDate}</td>
-                            <td className="py-3 px-4 text-sm text-white">{job.customer_name}</td>
-                            <td className="py-3 px-4">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                job.category === 'EDITING' ? 'bg-purple-500/20 text-purple-400' :
-                                job.category === 'EXPOSING' ? 'bg-cyan-500/20 text-cyan-400' :
-                                'bg-orange-500/20 text-orange-400'
-                              }`}>
-                                {job.category}
-                              </span>
-                            </td>
-                            <td className="py-3 px-4 text-sm text-white text-right">₹{job.total_price.toLocaleString('en-IN')}</td>
-                            <td className="py-3 px-4 text-center">
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                job.payment_status === 'COMPLETED' ? 'bg-emerald-500/20 text-emerald-400' :
-                                job.payment_status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' :
-                                'bg-red-500/20 text-red-400'
-                              }`}>
-                                {job.payment_status}
-                              </span>
-                            </td>
+                    <div className="hidden sm:block overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-slate-700/30">
+                          <tr>
+                            <th className="text-left py-3 px-4 text-xs font-medium text-slate-400">Date</th>
+                            <th className="text-left py-3 px-4 text-xs font-medium text-slate-400">Customer</th>
+                            <th className="text-left py-3 px-4 text-xs font-medium text-slate-400">Category</th>
+                            <th className="text-right py-3 px-4 text-xs font-medium text-slate-400">Amount</th>
+                            <th className="text-center py-3 px-4 text-xs font-medium text-slate-400">Job Status</th>
                           </tr>
-                        )})}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
+                        </thead>
+                        <tbody className="divide-y divide-slate-700/30">
+                          {pendingWorkJobs.slice(0, 8).map((job) => (
+                            <tr
+                              key={job.id}
+                              onClick={() => router.push(getJobDetailHref(job))}
+                              className="cursor-pointer hover:bg-slate-700/20 transition-colors"
+                            >
+                              <td className="py-3 px-4 text-sm text-white">{formatJobDate(job.end_date || job.start_date)}</td>
+                              <td className="py-3 px-4 text-sm text-white">{job.customer_name}</td>
+                              <td className="py-3 px-4">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  job.category === 'EDITING' ? 'bg-purple-500/20 text-purple-400' :
+                                  job.category === 'EXPOSING' ? 'bg-cyan-500/20 text-cyan-400' :
+                                  'bg-orange-500/20 text-orange-400'
+                                }`}>
+                                  {job.category}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-sm text-white text-right">Rs.{job.total_price.toLocaleString('en-IN')}</td>
+                              <td className="py-3 px-4 text-center">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  job.status === 'IN_PROGRESS' ? 'bg-blue-500/20 text-blue-400' : 'bg-amber-500/20 text-amber-400'
+                                }`}>
+                                  {job.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
               </div>
-            )}
+
+              <div className="bg-slate-800/50 backdrop-blur border border-slate-700/50 rounded-xl overflow-hidden">
+                <div className="p-4 sm:p-5 border-b border-slate-700/40">
+                  <h2 className="text-base sm:text-xl font-bold text-white">Pending Payments ({periodLabel})</h2>
+                  <p className="text-slate-400 text-xs sm:text-sm mt-1">Unsettled payment entries across all categories</p>
+                </div>
+                {pendingPaymentJobs.length === 0 ? (
+                  <div className="p-6 text-slate-400 text-sm">No pending payments in this period.</div>
+                ) : (
+                  <>
+                    <div className="sm:hidden space-y-3 p-4">
+                      {pendingPaymentJobs.slice(0, 8).map((job) => (
+                        <button
+                          key={job.id}
+                          type="button"
+                          onClick={() => router.push(getJobDetailHref(job))}
+                          className="w-full text-left bg-slate-900/50 rounded-xl p-3 transition-colors hover:bg-slate-800/80 active:scale-[0.99]"
+                        >
+                          <div className="flex justify-between items-start gap-3">
+                            <div>
+                              <p className="text-white font-semibold text-sm">{job.customer_name}</p>
+                              <p className="text-slate-400 text-xs mt-1">Date: {formatJobDate(job.end_date || job.start_date)}</p>
+                            </div>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                              job.category === 'EDITING' ? 'bg-purple-500/20 text-purple-400' :
+                              job.category === 'EXPOSING' ? 'bg-cyan-500/20 text-cyan-400' :
+                              'bg-orange-500/20 text-orange-400'
+                            }`}>
+                              {job.category}
+                            </span>
+                          </div>
+                          <div className="mt-2 flex items-center justify-between">
+                            <p className="text-amber-400 text-sm font-bold">Balance: Rs.{(job.total_price - job.amount_paid).toLocaleString('en-IN')}</p>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                              job.payment_status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'
+                            }`}>
+                              {job.payment_status}
+                            </span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="hidden sm:block overflow-x-auto">
+                      <table className="w-full">
+                        <thead className="bg-slate-700/30">
+                          <tr>
+                            <th className="text-left py-3 px-4 text-xs font-medium text-slate-400">Date</th>
+                            <th className="text-left py-3 px-4 text-xs font-medium text-slate-400">Customer</th>
+                            <th className="text-left py-3 px-4 text-xs font-medium text-slate-400">Category</th>
+                            <th className="text-right py-3 px-4 text-xs font-medium text-slate-400">Balance</th>
+                            <th className="text-center py-3 px-4 text-xs font-medium text-slate-400">Payment Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-700/30">
+                          {pendingPaymentJobs.slice(0, 8).map((job) => (
+                            <tr
+                              key={job.id}
+                              onClick={() => router.push(getJobDetailHref(job))}
+                              className="cursor-pointer hover:bg-slate-700/20 transition-colors"
+                            >
+                              <td className="py-3 px-4 text-sm text-white">{formatJobDate(job.end_date || job.start_date)}</td>
+                              <td className="py-3 px-4 text-sm text-white">{job.customer_name}</td>
+                              <td className="py-3 px-4">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  job.category === 'EDITING' ? 'bg-purple-500/20 text-purple-400' :
+                                  job.category === 'EXPOSING' ? 'bg-cyan-500/20 text-cyan-400' :
+                                  'bg-orange-500/20 text-orange-400'
+                                }`}>
+                                  {job.category}
+                                </span>
+                              </td>
+                              <td className="py-3 px-4 text-sm text-amber-400 text-right">Rs.{(job.total_price - job.amount_paid).toLocaleString('en-IN')}</td>
+                              <td className="py-3 px-4 text-center">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  job.payment_status === 'PARTIAL' ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'
+                                }`}>
+                                  {job.payment_status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
           </>
         )}
       </div>

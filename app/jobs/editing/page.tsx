@@ -220,28 +220,7 @@ function EditingPageContent() {
         console.log('Job created successfully:', newJob.id);
       }
       
-      setFormData({
-        customer_name: '',
-        customer_phone: '',
-        event_details: '',
-        client_name: '',
-        studio_name: '',
-        event_type: '',
-        start_date: '',
-        end_date: '',
-        estimated_due_date: '',
-        camera_type: '',
-        duration_hours: 0,
-        rate_per_hour: 0,
-        total_price: 0,
-        amount_paid: 0,
-        payment_status: 'PENDING',
-        status: 'PENDING',
-        notes: '',
-        additional_work_type: '',
-        additional_work_custom: '',
-        additional_work_rate: 0,
-      });
+      setFormData(getDefaultFormData());
       setDurationHours(0);
       setDurationMinutes(0);
       setCustomEventType('');
@@ -315,28 +294,7 @@ function EditingPageContent() {
 
   function handleCancelEdit() {
     setEditingJob(null);
-    setFormData({
-      customer_name: '',
-      customer_phone: '',
-      event_details: '',
-      client_name: '',
-      studio_name: '',
-      event_type: '',
-      start_date: '',
-      end_date: '',
-      estimated_due_date: '',
-      camera_type: '',
-      duration_hours: 0,
-      rate_per_hour: 0,
-      total_price: 0,
-      amount_paid: 0,
-      payment_status: 'PENDING',
-      status: 'PENDING',
-      notes: '',
-      additional_work_type: '',
-      additional_work_custom: '',
-      additional_work_rate: 0,
-    });
+    setFormData(getDefaultFormData());
     setDurationHours(0);
     setDurationMinutes(0);
     setCustomEventType('');
@@ -505,6 +463,59 @@ function EditingPageContent() {
   const customerJobs = isCustomerView
     ? jobs.filter((j) => customerKeyForJob(j) === selectedCustomerKey)
     : [];
+  const selectedCustomer = useMemo(() => {
+    if (!isCustomerView) return null;
+    return groupedCustomers.find((group) => group.key === selectedCustomerKey) ||
+      (customerJobs[0]
+        ? {
+            key: selectedCustomerKey || customerKeyForJob(customerJobs[0]),
+            name: customerJobs[0].customer_name,
+            phone: customerJobs[0].customer_phone || '',
+            jobs: customerJobs,
+          }
+        : null);
+  }, [customerJobs, groupedCustomers, isCustomerView, selectedCustomerKey]);
+  const selectedCustomerName = selectedCustomer?.name || '';
+  const selectedCustomerPhone = selectedCustomer?.phone || '';
+
+  function getDefaultFormData() {
+    return {
+      customer_name: selectedCustomerName,
+      customer_phone: selectedCustomerPhone,
+      event_details: '',
+      client_name: '',
+      studio_name: '',
+      event_type: '',
+      start_date: '',
+      end_date: '',
+      estimated_due_date: '',
+      camera_type: '',
+      duration_hours: 0,
+      rate_per_hour: 0,
+      total_price: 0,
+      amount_paid: 0,
+      payment_status: 'PENDING' as const,
+      status: 'PENDING' as const,
+      notes: '',
+      additional_work_type: '',
+      additional_work_custom: '',
+      additional_work_rate: 0,
+    };
+  }
+
+  useEffect(() => {
+    if (!showForm || !!editingJob || !selectedCustomerName) return;
+    setFormData((prev) => {
+      if (prev.customer_name === selectedCustomerName && prev.customer_phone === selectedCustomerPhone) {
+        return prev;
+      }
+      return {
+        ...prev,
+        customer_name: selectedCustomerName || prev.customer_name,
+        customer_phone: selectedCustomerPhone || prev.customer_phone,
+      };
+    });
+  }, [showForm, editingJob, selectedCustomerName, selectedCustomerPhone]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
@@ -523,7 +534,13 @@ function EditingPageContent() {
                 <p className="text-purple-300 text-xs sm:text-sm mt-0.5 sm:mt-1 hidden sm:block">Post-production & video editing</p>
               </div>
             </div>
-            <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold text-sm sm:text-base hover:shadow-lg hover:shadow-purple-500/25 transition-all active:scale-95">
+            <button onClick={() => {
+              if (!showForm) {
+                setEditingJob(null);
+                setFormData(getDefaultFormData());
+              }
+              setShowForm(!showForm);
+            }} className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold text-sm sm:text-base hover:shadow-lg hover:shadow-purple-500/25 transition-all active:scale-95">
               <Plus className="w-4 h-4 sm:w-5 sm:h-5" /> <span className="hidden xs:inline">Add</span> Job
             </button>
           </div>

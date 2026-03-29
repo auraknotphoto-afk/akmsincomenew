@@ -133,6 +133,21 @@ function formatDisplayDate(value?: string) {
   return new Date(year, month - 1, day).toLocaleDateString('en-IN');
 }
 
+function getDateRows(job: Job) {
+  return [
+    { label: 'Start', value: formatDisplayDate(job.start_date) },
+    { label: 'End', value: formatDisplayDate(job.end_date) },
+    { label: 'Due', value: formatDisplayDate(job.estimated_due_date) },
+    { label: 'Payment', value: formatDisplayDate(job.payment_date) },
+  ];
+}
+
+function formatAllDates(job: Job) {
+  return getDateRows(job)
+    .map((row) => `${row.label}: ${row.value}`)
+    .join(' | ');
+}
+
 function buildCustomerReport(jobs: Job[]) {
   const customerMap = new Map<
     string,
@@ -322,9 +337,12 @@ export default function ReportsPage() {
     : getDateRange(selectedPeriod).label;
 
   function exportToCSV() {
-    const headers = ['Date', 'Category', 'Customer', 'Type of Work', 'Total Price', 'Amount Paid', 'Balance', 'Payment Status', 'Job Status'];
+    const headers = ['Start Date', 'End Date', 'Due Date', 'Payment Date', 'Category', 'Customer', 'Type of Work', 'Total Price', 'Amount Paid', 'Balance', 'Payment Status', 'Job Status'];
     const rows = jobs.map(job => [
       job.start_date,
+      job.end_date || '-',
+      job.estimated_due_date || '-',
+      job.payment_date || '-',
       job.category,
       job.customer_name,
       job.type_of_work || '-',
@@ -576,21 +594,29 @@ export default function ReportsPage() {
     });
 
     y = drawSectionTitle(doc, 'Transactions', y + 3);
-    y = drawTableHeader(doc, ['Date', 'Studio/Customer Name', 'Category', 'Total Amount', 'Amount Paid', 'Balance', 'Profit'], [26, 82, 30, 36, 36, 36, 36], y);
+    y = drawTableHeader(
+      doc,
+      ['Studio/Customer Name', 'Category', 'Start', 'End', 'Due', 'Payment', 'Total Amount', 'Amount Paid', 'Balance', 'Profit'],
+      [54, 22, 22, 22, 22, 24, 28, 28, 28, 28],
+      y
+    );
     jobs.forEach((job, index) => {
       y = ensurePdfPage(doc, y, title, subtitle, logoDataUrl);
       y = drawTableRow(
         doc,
         [
-          formatDisplayDate(job.end_date || job.start_date),
           job.customer_name,
           job.category,
+          formatDisplayDate(job.start_date),
+          formatDisplayDate(job.end_date),
+          formatDisplayDate(job.estimated_due_date),
+          formatDisplayDate(job.payment_date),
           formatCurrency(job.total_price),
           formatCurrency(job.amount_paid),
           formatCurrency(job.total_price - job.amount_paid),
           formatCurrency(job.total_price - (job.expense || 0)),
         ],
-        [26, 82, 30, 36, 36, 36, 36],
+        [54, 22, 22, 22, 22, 24, 28, 28, 28, 28],
         y,
         index % 2 === 0
       );
@@ -652,8 +678,8 @@ export default function ReportsPage() {
     y = drawSectionTitle(doc, 'Customer Entries', y + 4);
     y = drawTableHeader(
       doc,
-      ['Studio/Customer Name', 'Work/Event', 'Category', 'Date', 'Total Amount', 'Amount Paid', 'Balance'],
-      [50, 62, 28, 28, 34, 34, 34],
+      ['Studio/Customer Name', 'Work/Event', 'Category', 'Start', 'End', 'Due', 'Payment', 'Total Amount', 'Amount Paid', 'Balance'],
+      [34, 44, 18, 20, 20, 20, 22, 26, 26, 26],
       y
     );
     jobs.forEach((job, index) => {
@@ -665,12 +691,15 @@ export default function ReportsPage() {
           job.customer_name,
           workLabel,
           job.category,
-          formatDisplayDate(job.end_date || job.start_date),
+          formatDisplayDate(job.start_date),
+          formatDisplayDate(job.end_date),
+          formatDisplayDate(job.estimated_due_date),
+          formatDisplayDate(job.payment_date),
           formatCurrency(job.total_price),
           formatCurrency(job.amount_paid),
           formatCurrency(job.total_price - job.amount_paid),
         ],
-        [50, 62, 28, 28, 34, 34, 34],
+        [34, 44, 18, 20, 20, 20, 22, 26, 26, 26],
         y,
         index % 2 === 0
       );
@@ -938,7 +967,13 @@ export default function ReportsPage() {
                         <div className="flex justify-between items-start mb-2">
                           <div>
                             <p className="text-white font-medium text-sm">{job.customer_name}</p>
-                            <p className="text-gray-400 text-xs">{new Date(job.start_date).toLocaleDateString('en-IN')}</p>
+                            <div className="mt-1 space-y-0.5">
+                              {getDateRows(job).map((row) => (
+                                <p key={row.label} className="text-gray-400 text-xs">
+                                  {row.label}: {row.value}
+                                </p>
+                              ))}
+                            </div>
                           </div>
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
                             job.category === 'EDITING' ? 'bg-purple-500/20 text-purple-400' :
@@ -971,7 +1006,10 @@ export default function ReportsPage() {
                     <table className="w-full">
                       <thead className="bg-white/5">
                         <tr>
-                          <th className="text-left py-4 px-6 text-sm font-medium text-indigo-300">Date</th>
+                          <th className="text-left py-4 px-6 text-sm font-medium text-indigo-300">Start</th>
+                          <th className="text-left py-4 px-6 text-sm font-medium text-indigo-300">End</th>
+                          <th className="text-left py-4 px-6 text-sm font-medium text-indigo-300">Due</th>
+                          <th className="text-left py-4 px-6 text-sm font-medium text-indigo-300">Payment</th>
                           <th className="text-left py-4 px-6 text-sm font-medium text-indigo-300">Category</th>
                           <th className="text-left py-4 px-6 text-sm font-medium text-indigo-300">Customer</th>
                           <th className="text-right py-4 px-6 text-sm font-medium text-indigo-300">Total</th>
@@ -983,7 +1021,10 @@ export default function ReportsPage() {
                       <tbody className="divide-y divide-white/5">
                         {jobs.map((job) => (
                           <tr key={job.id} className="hover:bg-white/5 transition-colors">
-                            <td className="py-4 px-6 text-sm text-white">{new Date(job.start_date).toLocaleDateString('en-IN')}</td>
+                            <td className="py-4 px-6 text-sm text-white">{formatDisplayDate(job.start_date)}</td>
+                            <td className="py-4 px-6 text-sm text-white">{formatDisplayDate(job.end_date)}</td>
+                            <td className="py-4 px-6 text-sm text-white">{formatDisplayDate(job.estimated_due_date)}</td>
+                            <td className="py-4 px-6 text-sm text-white">{formatDisplayDate(job.payment_date)}</td>
                             <td className="py-4 px-6 text-sm">
                               <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                                 job.category === 'EDITING' ? 'bg-purple-500/20 text-purple-400' :
