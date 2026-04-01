@@ -13,6 +13,7 @@ type CategorySummary = {
   category: string;
   totalJobs: number;
   totalIncome: number;
+  totalExpense: number;
   totalPaid: number;
   totalPending: number;
   totalProfit: number;
@@ -297,6 +298,7 @@ export default function ReportsPage() {
       color: 'purple',
       totalJobs: jobs.filter(j => j.category === 'EDITING').length,
       totalIncome: jobs.filter(j => j.category === 'EDITING').reduce((acc, j) => acc + j.total_price, 0),
+      totalExpense: jobs.filter(j => j.category === 'EDITING').reduce((acc, j) => acc + (j.expense || 0), 0),
       totalPaid: jobs.filter(j => j.category === 'EDITING').reduce((acc, j) => acc + j.amount_paid, 0),
       totalPending: jobs.filter(j => j.category === 'EDITING').reduce((acc, j) => acc + (j.total_price - j.amount_paid), 0),
       totalProfit: jobs.filter(j => j.category === 'EDITING').reduce((acc, j) => acc + (j.total_price - (j.expense || 0)), 0),
@@ -307,6 +309,7 @@ export default function ReportsPage() {
       color: 'cyan',
       totalJobs: jobs.filter(j => j.category === 'EXPOSING').length,
       totalIncome: jobs.filter(j => j.category === 'EXPOSING').reduce((acc, j) => acc + j.total_price, 0),
+      totalExpense: jobs.filter(j => j.category === 'EXPOSING').reduce((acc, j) => acc + (j.expense || 0), 0),
       totalPaid: jobs.filter(j => j.category === 'EXPOSING').reduce((acc, j) => acc + j.amount_paid, 0),
       totalPending: jobs.filter(j => j.category === 'EXPOSING').reduce((acc, j) => acc + (j.total_price - j.amount_paid), 0),
       totalProfit: jobs.filter(j => j.category === 'EXPOSING').reduce((acc, j) => acc + (j.total_price - (j.expense || 0)), 0),
@@ -317,6 +320,7 @@ export default function ReportsPage() {
       color: 'orange',
       totalJobs: jobs.filter(j => j.category === 'ADDON').length,
       totalIncome: jobs.filter(j => j.category === 'ADDON').reduce((acc, j) => acc + j.total_price, 0),
+      totalExpense: jobs.filter(j => j.category === 'ADDON').reduce((acc, j) => acc + (j.expense || 0), 0),
       totalPaid: jobs.filter(j => j.category === 'ADDON').reduce((acc, j) => acc + j.amount_paid, 0),
       totalPending: jobs.filter(j => j.category === 'ADDON').reduce((acc, j) => acc + (j.total_price - j.amount_paid), 0),
       totalProfit: jobs.filter(j => j.category === 'ADDON').reduce((acc, j) => acc + (j.total_price - (j.expense || 0)), 0),
@@ -326,6 +330,7 @@ export default function ReportsPage() {
   const totals = {
     jobs: jobs.length,
     income: jobs.reduce((acc, j) => acc + j.total_price, 0),
+    expense: jobs.reduce((acc, j) => acc + (j.expense || 0), 0),
     paid: jobs.reduce((acc, j) => acc + j.amount_paid, 0),
     pending: jobs.reduce((acc, j) => acc + (j.total_price - j.amount_paid), 0),
   };
@@ -337,7 +342,7 @@ export default function ReportsPage() {
     : getDateRange(selectedPeriod).label;
 
   function exportToCSV() {
-    const headers = ['Start Date', 'End Date', 'Due Date', 'Payment Date', 'Category', 'Customer', 'Type of Work', 'Total Price', 'Amount Paid', 'Balance', 'Payment Status', 'Job Status'];
+    const headers = ['Start Date', 'End Date', 'Due Date', 'Payment Date', 'Category', 'Customer', 'Type of Work', 'Total Price', 'Expense', 'Amount Paid', 'Balance', 'Profit', 'Payment Status', 'Job Status'];
     const rows = jobs.map(job => [
       job.start_date,
       job.end_date || '-',
@@ -347,8 +352,10 @@ export default function ReportsPage() {
       job.customer_name,
       job.type_of_work || '-',
       job.total_price,
+      job.expense || 0,
       job.amount_paid,
       job.total_price - job.amount_paid,
+      job.total_price - (job.expense || 0),
       job.payment_status,
       job.status,
     ]);
@@ -549,6 +556,7 @@ export default function ReportsPage() {
       [
         { label: 'Total Jobs', value: String(totals.jobs) },
         { label: 'Total Income', value: formatCurrency(totals.income) },
+        { label: 'Total Expense', value: formatCurrency(totals.expense) },
         { label: 'Amount Received', value: formatCurrency(totals.paid) },
         { label: 'Pending Amount', value: formatCurrency(totals.pending) },
       ],
@@ -556,7 +564,7 @@ export default function ReportsPage() {
     );
 
     y = drawSectionTitle(doc, 'Category Breakdown', y + 5);
-    y = drawTableHeader(doc, ['Category', 'Jobs', 'Income', 'Paid', 'Pending', 'Profit'], [50, 22, 45, 45, 45, 45], y);
+    y = drawTableHeader(doc, ['Category', 'Jobs', 'Income', 'Expense', 'Paid', 'Pending', 'Profit'], [40, 18, 34, 34, 34, 34, 34], y);
     categorySummaries.forEach((category, index) => {
       y = ensurePdfPage(doc, y, title, subtitle, logoDataUrl);
       y = drawTableRow(
@@ -565,11 +573,12 @@ export default function ReportsPage() {
           category.category,
           String(category.totalJobs),
           formatCurrency(category.totalIncome),
+          formatCurrency(category.totalExpense),
           formatCurrency(category.totalPaid),
           formatCurrency(category.totalPending),
           formatCurrency(category.totalProfit),
         ],
-        [50, 22, 45, 45, 45, 45],
+        [40, 18, 34, 34, 34, 34, 34],
         y,
         index % 2 === 0
       );
@@ -596,8 +605,8 @@ export default function ReportsPage() {
     y = drawSectionTitle(doc, 'Transactions', y + 3);
     y = drawTableHeader(
       doc,
-      ['Studio/Customer Name', 'Category', 'Start', 'End', 'Due', 'Payment', 'Total Amount', 'Amount Paid', 'Balance', 'Profit'],
-      [54, 22, 22, 22, 22, 24, 28, 28, 28, 28],
+      ['Studio/Customer Name', 'Category', 'Start', 'End', 'Due', 'Payment', 'Total Amount', 'Expense', 'Amount Paid', 'Balance', 'Profit'],
+      [42, 18, 18, 18, 18, 18, 24, 24, 24, 24, 24],
       y
     );
     jobs.forEach((job, index) => {
@@ -612,11 +621,12 @@ export default function ReportsPage() {
           formatDisplayDate(job.estimated_due_date),
           formatDisplayDate(job.payment_date),
           formatCurrency(job.total_price),
+          formatCurrency(job.expense || 0),
           formatCurrency(job.amount_paid),
           formatCurrency(job.total_price - job.amount_paid),
           formatCurrency(job.total_price - (job.expense || 0)),
         ],
-        [54, 22, 22, 22, 22, 24, 28, 28, 28, 28],
+        [42, 18, 18, 18, 18, 18, 24, 24, 24, 24, 24],
         y,
         index % 2 === 0
       );
@@ -829,7 +839,7 @@ export default function ReportsPage() {
         ) : (
           <>
             {/* Summary Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-8">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 mb-4 sm:mb-8">
               <div className="bg-gradient-to-br from-emerald-600/20 to-emerald-600/5 backdrop-blur border border-emerald-500/20 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                 <p className="text-emerald-300 text-[10px] sm:text-sm font-medium">Total Jobs</p>
                 <p className="text-xl sm:text-3xl font-bold text-white mt-1 sm:mt-2">{totals.jobs}</p>
@@ -837,6 +847,10 @@ export default function ReportsPage() {
               <div className="bg-gradient-to-br from-blue-600/20 to-blue-600/5 backdrop-blur border border-blue-500/20 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                 <p className="text-blue-300 text-[10px] sm:text-sm font-medium">Total Income</p>
                 <p className="text-lg sm:text-3xl font-bold text-white mt-1 sm:mt-2">₹{totals.income.toLocaleString('en-IN')}</p>
+              </div>
+              <div className="bg-gradient-to-br from-rose-600/20 to-rose-600/5 backdrop-blur border border-rose-500/20 rounded-xl sm:rounded-2xl p-4 sm:p-6">
+                <p className="text-rose-300 text-[10px] sm:text-sm font-medium">Total Expense</p>
+                <p className="text-lg sm:text-3xl font-bold text-white mt-1 sm:mt-2">Rs.{totals.expense.toLocaleString('en-IN')}</p>
               </div>
               <div className="bg-gradient-to-br from-cyan-600/20 to-cyan-600/5 backdrop-blur border border-cyan-500/20 rounded-xl sm:rounded-2xl p-4 sm:p-6">
                 <p className="text-cyan-300 text-[10px] sm:text-sm font-medium">Received</p>
@@ -867,12 +881,20 @@ export default function ReportsPage() {
                       <span className="text-blue-400 font-medium">₹{cat.totalIncome.toLocaleString('en-IN')}</span>
                     </div>
                     <div className="flex justify-between text-xs sm:text-sm">
+                      <span className="text-gray-400">Expense</span>
+                      <span className="text-rose-400 font-medium">Rs.{cat.totalExpense.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex justify-between text-xs sm:text-sm">
                       <span className="text-gray-400">Received</span>
                       <span className="text-emerald-400 font-medium">₹{cat.totalPaid.toLocaleString('en-IN')}</span>
                     </div>
                     <div className="flex justify-between text-xs sm:text-sm">
                       <span className="text-gray-400">Pending</span>
                       <span className="text-amber-400 font-medium">₹{cat.totalPending.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div className="flex justify-between text-xs sm:text-sm">
+                      <span className="text-gray-400">Profit</span>
+                      <span className="text-emerald-300 font-medium">Rs.{cat.totalProfit.toLocaleString('en-IN')}</span>
                     </div>
                   </div>
                 </div>
@@ -1061,6 +1083,8 @@ export default function ReportsPage() {
     </div>
   );
 }
+
+
 
 
 
