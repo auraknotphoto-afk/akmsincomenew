@@ -90,17 +90,26 @@ function getJobEventDetailsLabel(job: Job) {
   return job.event_details?.trim() || job.type_of_work?.trim() || '-';
 }
 
+function parseLocalDate(dateStr?: string) {
+  if (!dateStr) return null;
+  const [year, month, day] = dateStr.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const { isAuthenticated, loading: authLoading, logout, user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [allJobs, setAllJobs] = useState<Job[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('this_month');
+  const [pendingPaymentPeriod, setPendingPaymentPeriod] = useState<TimePeriod>('all_time');
   const [showAddJobMenu, setShowAddJobMenu] = useState(false);
   const [summary, setSummary] = useState({
     totalIncome: 0,
     totalPaid: 0,
     totalPending: 0,
+    livePending: 0,
     totalJobs: 0,
     byCategory: {
       EDITING: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0, pendingJobs: 0 },
@@ -139,14 +148,7 @@ export default function DashboardPage() {
     try {
       const allJobs = await db.getJobs(user.id);
       const { start, end } = getDateRange(selectedPeriod);
-      
-      // Helper function to parse date string as local time (not UTC)
-      const parseLocalDate = (dateStr: string) => {
-        if (!dateStr) return null;
-        const [year, month, day] = dateStr.split('-').map(Number);
-        return new Date(year, month - 1, day); // month is 0-indexed
-      };
-      
+
       // Filter by event end_date (or start_date if end_date not available)
       const filteredJobs = allJobs.filter(job => {
         const jobDate = parseLocalDate(job.end_date || job.start_date);
@@ -154,6 +156,7 @@ export default function DashboardPage() {
         return jobDate >= start && jobDate <= end;
       });
 
+      setAllJobs(allJobs);
       setJobs(filteredJobs);
 
       // Calculate summary
@@ -161,6 +164,7 @@ export default function DashboardPage() {
         totalIncome: 0,
         totalPaid: 0,
         totalPending: 0,
+        livePending: 0,
         totalJobs: filteredJobs.length,
         byCategory: {
           EDITING: { income: 0, paid: 0, pending: 0, profit: 0, jobs: 0, pendingJobs: 0 },
@@ -171,13 +175,11 @@ export default function DashboardPage() {
 
       filteredJobs.forEach((job) => {
         newSummary.totalIncome += job.total_price;
-        newSummary.totalPaid += job.amount_paid;
         newSummary.totalPending += (job.total_price - job.amount_paid);
 
         const cat = job.category as keyof typeof newSummary.byCategory;
         if (newSummary.byCategory[cat]) {
           newSummary.byCategory[cat].income += job.total_price;
-          newSummary.byCategory[cat].paid += job.amount_paid;
           newSummary.byCategory[cat].pending += (job.total_price - job.amount_paid);
           newSummary.byCategory[cat].profit += job.category === 'ADDON'
             ? job.total_price - (job.expense || 0)
@@ -191,6 +193,20 @@ export default function DashboardPage() {
           if (countsAsPendingJob) {
             newSummary.byCategory[cat].pendingJobs += 1;
           }
+        }
+      });
+
+      allJobs.forEach((job) => {
+        newSummary.livePending += (job.total_price - job.amount_paid);
+
+        const paymentDate = parseLocalDate(job.payment_date);
+        if (!paymentDate || paymentDate < start || paymentDate > end) return;
+
+        newSummary.totalPaid += job.amount_paid;
+
+        const cat = job.category as keyof typeof newSummary.byCategory;
+        if (newSummary.byCategory[cat]) {
+          newSummary.byCategory[cat].paid += job.amount_paid;
         }
       });
 
@@ -220,12 +236,20 @@ export default function DashboardPage() {
       textColor: 'text-blue-400',
     },
     {
-      label: 'Pending Amount',
-      value: `₹${summary.totalPending.toLocaleString('en-IN')}`,
+      label: 'Period Pending',
+      value: `Rs.${summary.totalPending.toLocaleString('en-IN')}`,
       icon: Clock,
       color: 'from-amber-600 to-amber-500',
       bgColor: 'bg-amber-500/20',
       textColor: 'text-amber-400',
+    },
+    {
+      label: 'Live Outstanding',
+      value: `Rs.${summary.livePending.toLocaleString('en-IN')}`,
+      icon: Clock,
+      color: 'from-orange-600 to-red-500',
+      bgColor: 'bg-orange-500/20',
+      textColor: 'text-orange-400',
     },
     {
       label: 'Total Jobs',
@@ -279,10 +303,17 @@ export default function DashboardPage() {
   const { label: periodLabel } = getDateRange(selectedPeriod);
   const pendingWorkJobs = jobs
     .filter((job) => job.category !== 'EXPOSING' && job.status !== 'COMPLETED')
-    .sort((a, b) => (a.end_date || a.start_date).localeCompare(b.end_date || b.start_date));
-  const pendingPaymentJobs = jobs
-    .filter((job) => job.payment_status !== 'COMPLETED')
-    .sort((a, b) => (a.end_date || a.start_date).localeCompare(b.end_date || b.start_date));
+    .sort((a, b) => (b.end_date || b.start_date).localeCompare(a.end_date || a.start_date));
+  const { start: pendingPaymentStart, end: pendingPaymentEnd, label: pendingPaymentLabel } = getDateRange(pendingPaymentPeriod);
+  const pendingPaymentJobs = allJobs
+    .filter((job) => {
+      if (job.payment_status === 'COMPLETED') return false;
+      if (pendingPaymentPeriod === 'all_time') return true;
+      const jobDate = parseLocalDate(job.end_date || job.start_date);
+      if (!jobDate) return false;
+      return jobDate >= pendingPaymentStart && jobDate <= pendingPaymentEnd;
+    })
+    .sort((a, b) => (b.end_date || b.start_date).localeCompare(a.end_date || a.start_date));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
@@ -357,7 +388,7 @@ export default function DashboardPage() {
         ) : (
           <>
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-4 sm:mb-8">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-6 mb-4 sm:mb-8">
               {stats.map((stat, index) => {
                 const Icon = stat.icon;
                 return (
@@ -627,8 +658,25 @@ export default function DashboardPage() {
 
               <div className="bg-slate-800/50 backdrop-blur border border-slate-700/50 rounded-xl overflow-hidden">
                 <div className="p-4 sm:p-5 border-b border-slate-700/40">
-                  <h2 className="text-base sm:text-xl font-bold text-white">Pending Payments ({periodLabel})</h2>
-                  <p className="text-slate-400 text-xs sm:text-sm mt-1">Unsettled payment entries across all categories</p>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <h2 className="text-base sm:text-xl font-bold text-white">Pending Payments ({pendingPaymentLabel})</h2>
+                      <p className="text-slate-400 text-xs sm:text-sm mt-1">Unsettled payment entries across all categories</p>
+                    </div>
+                    <div className="w-full sm:w-48">
+                      <select
+                        value={pendingPaymentPeriod}
+                        onChange={(e) => setPendingPaymentPeriod(e.target.value as TimePeriod)}
+                        className="w-full px-3 py-2 rounded-xl bg-slate-900/70 border border-slate-600/60 text-white text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                      >
+                        {periods.map((period) => (
+                          <option key={period.value} value={period.value} className="bg-slate-900 text-white">
+                            {period.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
                 </div>
                 {pendingPaymentJobs.length === 0 ? (
                   <div className="p-6 text-slate-400 text-sm">No pending payments in this period.</div>
@@ -721,6 +769,7 @@ export default function DashboardPage() {
     </div>
   );
 }
+
 
 
 

@@ -89,6 +89,7 @@ function EditingPageContent() {
     total_price: number;
     amount_paid: number;
     payment_status: 'PENDING' | 'PARTIAL' | 'COMPLETED';
+    payment_date: string;
     status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED';
     notes: string;
     additional_work_type: string;
@@ -109,6 +110,7 @@ function EditingPageContent() {
     total_price: 0,
     amount_paid: 0,
     payment_status: 'PENDING',
+    payment_date: '',
     status: 'PENDING',
     notes: '',
     additional_work_type: '',
@@ -274,6 +276,7 @@ function EditingPageContent() {
       total_price: job.total_price,
       amount_paid: job.amount_paid,
       payment_status: job.payment_status as 'PENDING' | 'PARTIAL' | 'COMPLETED',
+      payment_date: job.payment_date || '',
       status: job.status as 'PENDING' | 'IN_PROGRESS' | 'COMPLETED',
       notes: job.notes || '',
       additional_work_type: (job as any).additional_work_type || '',
@@ -495,6 +498,7 @@ function EditingPageContent() {
       total_price: 0,
       amount_paid: 0,
       payment_status: 'PENDING' as const,
+      payment_date: '',
       status: 'PENDING' as const,
       notes: '',
       additional_work_type: '',
@@ -899,6 +903,19 @@ function EditingPageContent() {
                         <MessageCircle className="w-5 h-5" />
                       </button>
                     )}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs sm:text-sm font-medium text-purple-300 mb-1.5 sm:mb-2">Payment Date</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
+                    <input
+                      type="date"
+                      value={formData.payment_date}
+                      onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
+                      className="w-full pl-10 sm:pl-11 pr-4 py-2.5 sm:py-3 bg-white/10 border border-white/20 rounded-xl text-white text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-purple-500 touch-manipulation"
+                    />
                   </div>
                 </div>
               </div>
