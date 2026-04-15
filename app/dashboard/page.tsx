@@ -199,6 +199,16 @@ export default function DashboardPage() {
       allJobs.forEach((job) => {
         newSummary.livePending += (job.total_price - job.amount_paid);
 
+        if (selectedPeriod === 'all_time') {
+          newSummary.totalPaid += job.amount_paid;
+
+          const cat = job.category as keyof typeof newSummary.byCategory;
+          if (newSummary.byCategory[cat]) {
+            newSummary.byCategory[cat].paid += job.amount_paid;
+          }
+          return;
+        }
+
         const paymentDate = parseLocalDate(job.payment_date);
         if (!paymentDate || paymentDate < start || paymentDate > end) return;
 
