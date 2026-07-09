@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth-config';
 
 type BackupJob = Record<string, unknown>;
 type BackupTemplate = Record<string, unknown>;
+type BackupBill = Record<string, unknown>;
 
 function normalizeJob(userId: string, job: BackupJob) {
   return {
@@ -66,6 +67,48 @@ function normalizeTemplate(userId: string, template: BackupTemplate) {
   };
 }
 
+function normalizeBill(userId: string, bill: BackupBill) {
+  const balanceAmount = Number(bill.balance_amount ?? bill.balanceAmount ?? 0);
+  return {
+    id: String(bill.id || crypto.randomUUID()),
+    user_id: userId,
+    bill_number: String(bill.bill_number || bill.billNumber || `BILL-${Date.now()}`),
+    bill_date: String(bill.bill_date || bill.billDate || new Date().toISOString().slice(0, 10)),
+    completion_date: String(
+      bill.completion_date || bill.completionDate || new Date().toISOString().slice(0, 10)
+    ),
+    business_name: String(bill.business_name || bill.businessName || 'Aura Knot Photography'),
+    business_phone: bill.business_phone ? String(bill.business_phone) : bill.businessPhone ? String(bill.businessPhone) : null,
+    business_email: bill.business_email ? String(bill.business_email) : bill.businessEmail ? String(bill.businessEmail) : null,
+    business_address: bill.business_address ? String(bill.business_address) : bill.businessAddress ? String(bill.businessAddress) : null,
+    customer_name: String(bill.customer_name || bill.customerName || ''),
+    customer_phone: bill.customer_phone ? String(bill.customer_phone) : bill.customerPhone ? String(bill.customerPhone) : null,
+    customer_address: bill.customer_address ? String(bill.customer_address) : bill.customerAddress ? String(bill.customerAddress) : null,
+    customer_gst_no: bill.customer_gst_no ? String(bill.customer_gst_no) : bill.customerGstNo ? String(bill.customerGstNo) : null,
+    notes: bill.notes ? String(bill.notes) : null,
+    items: Array.isArray(bill.items) ? bill.items : [],
+    discount_percent: Number(bill.discount_percent ?? bill.discountPercent ?? 0),
+    tax_percent: Number(bill.tax_percent ?? bill.taxPercent ?? 0),
+    advance_amount: Number(bill.advance_amount ?? bill.advanceAmount ?? 0),
+    subtotal: Number(bill.subtotal || 0),
+    discount_amount: Number(bill.discount_amount ?? bill.discountAmount ?? 0),
+    taxable_amount: Number(bill.taxable_amount ?? bill.taxableAmount ?? 0),
+    tax_amount: Number(bill.tax_amount ?? bill.taxAmount ?? 0),
+    grand_total: Number(bill.grand_total ?? bill.grandTotal ?? 0),
+    balance_amount: balanceAmount,
+    completion_status:
+      bill.completion_status === 'COMPLETED' || bill.completionStatus === 'COMPLETED'
+        ? 'COMPLETED'
+        : bill.completion_status === 'NOT_COMPLETED' || bill.completionStatus === 'NOT_COMPLETED'
+          ? 'NOT_COMPLETED'
+          : balanceAmount <= 0
+            ? 'COMPLETED'
+            : 'NOT_COMPLETED',
+    created_at: bill.created_at ? String(bill.created_at) : bill.createdAt ? String(bill.createdAt) : new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+}
+
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -84,6 +127,7 @@ export async function POST(req: NextRequest) {
     }
 
     const jobs = Array.isArray(backup.jobs) ? backup.jobs : [];
+    const bills = Array.isArray(backup.bills) ? backup.bills : [];
     const templates = Array.isArray(backup.whatsapp_templates)
       ? backup.whatsapp_templates
       : [];
@@ -118,6 +162,14 @@ export async function POST(req: NextRequest) {
       if (deleteTemplatesRes.error && deleteTemplatesRes.error.code !== '42P01') {
         return NextResponse.json(
           { error: `Failed to clear templates: ${deleteTemplatesRes.error.message}` },
+          { status: 500 }
+        );
+      }
+
+      const deleteBillsRes = await supabase.from('bills').delete().eq('user_id', userId);
+      if (deleteBillsRes.error && deleteBillsRes.error.code !== '42P01') {
+        return NextResponse.json(
+          { error: `Failed to clear bills: ${deleteBillsRes.error.message}` },
           { status: 500 }
         );
       }
@@ -157,11 +209,26 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    if (bills.length) {
+      const normalizedBills = (bills as BackupBill[]).map((bill) => normalizeBill(userId, bill));
+      const billsUpsertRes = await supabase.from('bills').upsert(normalizedBills, {
+        onConflict: 'id',
+      });
+
+      if (billsUpsertRes.error && billsUpsertRes.error.code !== '42P01') {
+        return NextResponse.json(
+          { error: `Failed to restore bills: ${billsUpsertRes.error.message}` },
+          { status: 500 }
+        );
+      }
+    }
+
     return NextResponse.json({
       success: true,
       message: mode === 'replace' ? 'Backup restored with replace mode' : 'Backup merged successfully',
       counts: {
         jobs: jobs.length,
+        bills: bills.length,
         templates: templates.length,
       },
     });

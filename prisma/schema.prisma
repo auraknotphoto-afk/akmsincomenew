@@ -22,6 +22,7 @@ model User {
   
   jobs      Job[]
   reports   Report[]
+  bills     Bill[]
 }
 
 model Job {
@@ -89,6 +90,40 @@ model Report {
   updatedAt DateTime   @updatedAt
   
   @@index([userId])
+}
+
+model Bill {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  billNumber      String
+  billDate        DateTime
+  completionDate  DateTime
+  businessName    String
+  businessPhone   String?
+  businessEmail   String?
+  businessAddress String?
+  customerName    String
+  customerPhone   String?
+  customerAddress String?
+  customerGstNo   String?
+  notes           String?
+  items           Json
+  discountPercent Float    @default(0)
+  taxPercent      Float    @default(0)
+  advanceAmount   Float    @default(0)
+  subtotal        Float    @default(0)
+  discountAmount  Float    @default(0)
+  taxableAmount   Float    @default(0)
+  taxAmount       Float    @default(0)
+  grandTotal      Float    @default(0)
+  balanceAmount   Float    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([userId, customerName])
+  @@unique([userId, billNumber])
 }
 
 enum JobCategory {

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { TrendingUp, DollarSign, Clock, Briefcase, Plus, BarChart3, ArrowRight, Calendar, Settings, LogOut, Camera, Edit, ChevronDown } from 'lucide-react';
+import { TrendingUp, DollarSign, Clock, Briefcase, Plus, BarChart3, ArrowRight, Calendar, Settings, LogOut, Camera, Edit, ChevronDown, ReceiptText, ScrollText, FolderOpen } from 'lucide-react';
 import { db, Job } from '@/lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -501,7 +501,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-6">
               <div className="relative">
                 <button
                   onClick={() => setShowAddJobMenu(!showAddJobMenu)}
@@ -569,6 +569,48 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-2 sm:gap-3">
                     <BarChart3 className="w-5 h-5 sm:w-6 sm:h-6" />
                     <span>View Reports</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </button>
+
+              <button
+                onClick={() => router.push('/invoice-generator')}
+                className="group relative bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl p-5 sm:p-8 text-white font-semibold text-sm sm:text-lg hover:shadow-2xl hover:shadow-orange-900/50 transition-all duration-300 overflow-hidden active:scale-95"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-amber-300/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="relative z-10 flex items-center justify-between">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <ReceiptText className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <span>Generate Invoice</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </button>
+
+              <button
+                onClick={() => router.push('/bill-generator')}
+                className="group relative bg-gradient-to-br from-cyan-600 to-sky-700 rounded-xl p-5 sm:p-8 text-white font-semibold text-sm sm:text-lg hover:shadow-2xl hover:shadow-cyan-900/50 transition-all duration-300 overflow-hidden active:scale-95"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-cyan-300/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="relative z-10 flex items-center justify-between">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <ScrollText className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <span>Generate Bill</span>
+                  </div>
+                  <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </button>
+
+              <button
+                onClick={() => router.push('/saved-bills')}
+                className="group relative bg-gradient-to-br from-slate-700 to-slate-800 rounded-xl p-5 sm:p-8 text-white font-semibold text-sm sm:text-lg hover:shadow-2xl hover:shadow-slate-900/50 transition-all duration-300 overflow-hidden active:scale-95"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="relative z-10 flex items-center justify-between">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <FolderOpen className="w-5 h-5 sm:w-6 sm:h-6" />
+                    <span>Saved Bills</span>
                   </div>
                   <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" />
                 </div>

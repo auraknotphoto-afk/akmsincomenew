@@ -49,7 +49,7 @@ export async function GET() {
 
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const [jobsRes, templatesRes] = await Promise.all([
+    const [jobsRes, templatesRes, billsRes] = await Promise.all([
       supabase
         .from('jobs')
         .select('*')
@@ -60,6 +60,11 @@ export async function GET() {
         .select('*')
         .eq('user_id', userId)
         .order('updated_at', { ascending: false }),
+      supabase
+        .from('bills')
+        .select('*')
+        .eq('user_id', userId)
+        .order('bill_date', { ascending: false }),
     ]);
 
     if (jobsRes.error) {
@@ -76,8 +81,16 @@ export async function GET() {
       );
     }
 
+    if (billsRes.error && billsRes.error.code !== '42P01') {
+      return NextResponse.json(
+        { error: `Failed to fetch bills: ${billsRes.error.message}` },
+        { status: 500 }
+      );
+    }
+
     const jobs = jobsRes.data || [];
     const templates = templatesRes.data || [];
+    const bills = billsRes.data || [];
     const exportedAt = new Date().toISOString();
     const timestamp = exportedAt.replace(/[:.]/g, '-');
 
@@ -87,10 +100,13 @@ export async function GET() {
       counts: {
         jobs: jobs.length,
         templates: templates.length,
+        bills: bills.length,
       },
       jobs,
+      bills,
       whatsapp_templates: templates,
       jobs_csv: toCsv(jobs as Record<string, unknown>[]),
+      bills_csv: toCsv(bills as Record<string, unknown>[]),
     };
 
     return new NextResponse(JSON.stringify(payload, null, 2), {
