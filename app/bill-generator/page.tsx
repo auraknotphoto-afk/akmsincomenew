@@ -101,6 +101,58 @@ function formatCurrency(value: number) {
   return `Rs.${value.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
 }
 
+function convertBelowThousand(value: number): string {
+  const ones = [
+    '',
+    'One',
+    'Two',
+    'Three',
+    'Four',
+    'Five',
+    'Six',
+    'Seven',
+    'Eight',
+    'Nine',
+    'Ten',
+    'Eleven',
+    'Twelve',
+    'Thirteen',
+    'Fourteen',
+    'Fifteen',
+    'Sixteen',
+    'Seventeen',
+    'Eighteen',
+    'Nineteen',
+  ];
+  const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+  if (value < 20) return ones[value];
+  if (value < 100) {
+    return `${tens[Math.floor(value / 10)]}${value % 10 ? ` ${ones[value % 10]}` : ''}`.trim();
+  }
+
+  return `${ones[Math.floor(value / 100)]} Hundred${value % 100 ? ` ${convertBelowThousand(value % 100)}` : ''}`.trim();
+}
+
+function numberToWords(value: number): string {
+  if (!Number.isFinite(value) || value < 0) return 'Zero Rupees Only';
+  if (value === 0) return 'Zero Rupees Only';
+
+  const rounded = Math.round(value);
+  const crore = Math.floor(rounded / 10000000);
+  const lakh = Math.floor((rounded % 10000000) / 100000);
+  const thousand = Math.floor((rounded % 100000) / 1000);
+  const remainder = rounded % 1000;
+  const parts = [
+    crore ? `${convertBelowThousand(crore)} Crore` : '',
+    lakh ? `${convertBelowThousand(lakh)} Lakh` : '',
+    thousand ? `${convertBelowThousand(thousand)} Thousand` : '',
+    remainder ? convertBelowThousand(remainder) : '',
+  ].filter(Boolean);
+
+  return `${parts.join(' ')} Rupees Only`;
+}
+
 const BILL_LOGO_WIDTH = 907;
 const BILL_LOGO_HEIGHT = 126;
 const BILL_LOGO_RATIO = BILL_LOGO_WIDTH / BILL_LOGO_HEIGHT;
@@ -454,10 +506,6 @@ export default function BillGeneratorPage() {
       doc.setFillColor(250, 247, 242);
       doc.rect(0, 0, pageWidth, pageHeight, 'F');
 
-      doc.setDrawColor(214, 198, 168);
-      doc.setLineWidth(0.6);
-      doc.roundedRect(10, 10, pageWidth - 20, pageHeight - 20, 4, 4);
-
       if (logoDataUrl) {
         const logoWidth = 82;
         const logoHeight = logoWidth / BILL_LOGO_RATIO;
@@ -469,17 +517,14 @@ export default function BillGeneratorPage() {
       doc.setFontSize(24);
       doc.text('BILL', right, y + 3, { align: 'right' });
 
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10.5);
       doc.setTextColor(95, 78, 59);
       doc.text(`Bill No: ${form.billNumber}`, right, y + 10, { align: 'right' });
       doc.text(`Bill Date: ${form.billDate}`, right, y + 15, { align: 'right' });
       doc.text(`Completed On: ${form.completionDate}`, right, y + 20, { align: 'right' });
 
-      y = 42;
-      doc.setDrawColor(226, 214, 190);
-      doc.line(left, y, right, y);
-      y += 8;
+      y = 48;
 
       doc.setFillColor(255, 252, 247);
       doc.roundedRect(left - 2, y - 5, 84, 28, 2, 2, 'F');
@@ -509,20 +554,21 @@ export default function BillGeneratorPage() {
 
       const fromHeight = fromLines.length * 5;
       const toHeight = toLines.length * 5;
-      y += Math.max(fromHeight, toHeight) + 20;
+      y += Math.max(fromHeight, toHeight) + 14;
 
       doc.setFillColor(91, 67, 43);
       doc.rect(left, y, pageWidth - 28, 9, 'F');
       doc.setTextColor(255, 255, 255);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(10);
-      doc.text('Description', left + 3, y + 6);
+      doc.text('Description', left + 49, y + 6, { align: 'center' });
       doc.text('Qty', 128, y + 6, { align: 'right' });
       doc.text('Rate', 154, y + 6, { align: 'right' });
       doc.text('Amount', right - 2, y + 6, { align: 'right' });
 
       y += 12;
       doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
       doc.setTextColor(45, 45, 45);
       items.forEach((item, index) => {
         const amount = (Number(item.quantity) || 0) * (Number(item.rate) || 0);
@@ -541,7 +587,7 @@ export default function BillGeneratorPage() {
         doc.line(left, y - 4, right, y - 4);
       });
 
-      y += 8;
+      y += 4;
       const summaryBoxX = 118;
       const summaryBoxWidth = pageWidth - summaryBoxX - 14;
       const summaryRows: Array<[string, number]> = [
@@ -551,7 +597,7 @@ export default function BillGeneratorPage() {
         ['Advance', advanceAmount],
         ['Balance', balance],
       ];
-      const summaryBoxHeight = 50;
+      const summaryBoxHeight = 42;
 
       doc.setFillColor(255, 252, 247);
       doc.roundedRect(summaryBoxX, y - 2, summaryBoxWidth, summaryBoxHeight, 3, 3, 'F');
@@ -561,23 +607,23 @@ export default function BillGeneratorPage() {
       let summaryY = y + 4;
       summaryRows.forEach(([label, value]) => {
         doc.setFont('helvetica', label === 'Balance' ? 'bold' : 'normal');
-        doc.setFontSize(10);
+        doc.setFontSize(9);
         doc.setTextColor(70, 70, 70);
         doc.text(label, summaryBoxX + 4, summaryY);
         doc.text(formatCurrency(value), summaryBoxX + summaryBoxWidth - 4, summaryY, { align: 'right' });
-        summaryY += 7;
+        summaryY += 5.2;
       });
 
       doc.setDrawColor(214, 198, 168);
       doc.line(summaryBoxX + 4, summaryY, summaryBoxX + summaryBoxWidth - 4, summaryY);
       doc.setFont('times', 'bold');
-      doc.setFontSize(12);
+      doc.setFontSize(11);
       doc.setTextColor(58, 42, 26);
-      doc.text('Total', summaryBoxX + 4, summaryY + 8);
-      doc.text(formatCurrency(grandTotal), summaryBoxX + summaryBoxWidth - 4, summaryY + 8, { align: 'right' });
+      doc.text('Total', summaryBoxX + 4, summaryY + 6.5);
+      doc.text(formatCurrency(grandTotal), summaryBoxX + summaryBoxWidth - 4, summaryY + 6.5, { align: 'right' });
 
       if (form.notes.trim()) {
-        y = Math.max(y + 56, summaryY + 18);
+        y = Math.max(y + 48, summaryY + 16);
         doc.setFont('times', 'bold');
         doc.setFontSize(12);
         doc.text('Notes', left, y);
@@ -585,29 +631,24 @@ export default function BillGeneratorPage() {
         doc.setFontSize(10);
         doc.setTextColor(64, 64, 64);
         const notesLines = doc.splitTextToSize(form.notes.trim(), 92);
-        doc.roundedRect(left, y + 4, 92, Math.max(22, notesLines.length * 5 + 8), 2, 2);
+        doc.roundedRect(left, y + 4, 92, Math.max(20, notesLines.length * 5 + 6), 2, 2);
         doc.text(notesLines, left + 4, y + 11);
       }
 
-      const signatureBaseY = pageHeight - 34;
-      doc.setDrawColor(214, 198, 168);
-      doc.line(left, signatureBaseY - 6, right, signatureBaseY - 6);
-
-      doc.setFont('helvetica', 'normal');
+      const amountWordsY = pageHeight - 22;
+      doc.setFont('helvetica', 'bold');
       doc.setFontSize(9);
-      doc.setTextColor(95, 78, 59);
-      doc.text(form.businessName || 'Aura Knot Photography', left, signatureBaseY);
-      doc.text(form.businessPhone || '', left, signatureBaseY + 5);
-      doc.text(form.businessEmail || '', left, signatureBaseY + 10);
+      doc.setTextColor(58, 42, 26);
+      doc.text(`Amount in Words: ${numberToWords(grandTotal)}`, left, amountWordsY);
 
       doc.setFont('times', 'bold');
       doc.setFontSize(11);
       doc.setTextColor(58, 42, 26);
-      doc.text('Authorised Signature', right, signatureBaseY + 12, { align: 'right' });
+      doc.text('Authorised Signature', right, pageHeight - 16, { align: 'right' });
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
       doc.setTextColor(108, 92, 76);
-      doc.text('This is a computer-generated final bill.', left, pageHeight - 18);
+      doc.text('This is a computer-generated final bill.', left, pageHeight - 14);
 
       const safeName = form.customerName.replace(/[^a-zA-Z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'customer';
       doc.save(`${form.billNumber}-${safeName}.pdf`);
