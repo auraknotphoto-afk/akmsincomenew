@@ -7,6 +7,17 @@ type BackupJob = Record<string, unknown>;
 type BackupTemplate = Record<string, unknown>;
 type BackupBill = Record<string, unknown>;
 
+const EXTENDED_BILL_COLUMNS = [
+  'event_type',
+  'event_dates',
+  'payment_mode',
+  'payment_date',
+  'transaction_reference',
+  'paper_size',
+  'show_payment_details',
+  'show_terms_and_notes',
+] as const;
+
 function normalizeJob(userId: string, job: BackupJob) {
   return {
     id: String(job.id || crypto.randomUUID()),
@@ -67,6 +78,66 @@ function normalizeTemplate(userId: string, template: BackupTemplate) {
   };
 }
 
+function normalizeOptionalString(value: unknown) {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function normalizeDateString(value: unknown) {
+  if (typeof value !== 'string' || !value) return null;
+  const parsed = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toISOString().slice(0, 10);
+}
+
+function normalizePaymentMode(value: unknown) {
+  return value === 'CASH' ||
+    value === 'UPI' ||
+    value === 'BANK_TRANSFER' ||
+    value === 'CHEQUE' ||
+    value === 'OTHERS'
+    ? value
+    : null;
+}
+
+function normalizeBoolean(value: unknown, fallback = false) {
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function stripExtendedBillFields<T extends Record<string, unknown>>(bill: T) {
+  const {
+    event_type,
+    event_dates,
+    payment_mode,
+    payment_date,
+    transaction_reference,
+    paper_size,
+    show_payment_details,
+    show_terms_and_notes,
+    ...legacyBill
+  } = bill;
+  void event_type;
+  void event_dates;
+  void payment_mode;
+  void payment_date;
+  void transaction_reference;
+  void paper_size;
+  void show_payment_details;
+  void show_terms_and_notes;
+  return legacyBill;
+}
+
+function isExtendedBillColumnError(error: { code?: string; message?: string; details?: string } | null) {
+  if (!error) return false;
+  const text = `${error.message || ''} ${error.details || ''}`.toLowerCase();
+  return (
+    error.code === '42703' ||
+    error.code === 'PGRST204' ||
+    EXTENDED_BILL_COLUMNS.some((column) => text.includes(column))
+  );
+}
+
 function normalizeBill(userId: string, bill: BackupBill) {
   const balanceAmount = Number(bill.balance_amount ?? bill.balanceAmount ?? 0);
   return {
@@ -85,11 +156,30 @@ function normalizeBill(userId: string, bill: BackupBill) {
     customer_phone: bill.customer_phone ? String(bill.customer_phone) : bill.customerPhone ? String(bill.customerPhone) : null,
     customer_address: bill.customer_address ? String(bill.customer_address) : bill.customerAddress ? String(bill.customerAddress) : null,
     customer_gst_no: bill.customer_gst_no ? String(bill.customer_gst_no) : bill.customerGstNo ? String(bill.customerGstNo) : null,
-    notes: bill.notes ? String(bill.notes) : null,
+    event_type: normalizeOptionalString(bill.event_type ?? bill.eventType ?? null),
+    event_dates: normalizeOptionalString(bill.event_dates ?? bill.eventDates ?? null),
+    notes: normalizeOptionalString(bill.notes ?? null),
     items: Array.isArray(bill.items) ? bill.items : [],
     discount_percent: Number(bill.discount_percent ?? bill.discountPercent ?? 0),
     tax_percent: Number(bill.tax_percent ?? bill.taxPercent ?? 0),
     advance_amount: Number(bill.advance_amount ?? bill.advanceAmount ?? 0),
+    payment_mode: normalizePaymentMode(bill.payment_mode ?? bill.paymentMode ?? null),
+    payment_date: normalizeDateString(bill.payment_date ?? bill.paymentDate ?? null),
+    transaction_reference: normalizeOptionalString(
+      bill.transaction_reference ?? bill.transactionReference ?? null
+    ),
+    paper_size:
+      bill.paper_size === 'A4' || bill.paper_size === 'A5'
+        ? bill.paper_size
+        : bill.paperSize === 'A4' || bill.paperSize === 'A5'
+          ? bill.paperSize
+          : null,
+    show_payment_details: normalizeBoolean(
+      bill.show_payment_details ?? bill.showPaymentDetails ?? false
+    ),
+    show_terms_and_notes: normalizeBoolean(
+      bill.show_terms_and_notes ?? bill.showTermsAndNotes ?? false
+    ),
     subtotal: Number(bill.subtotal || 0),
     discount_amount: Number(bill.discount_amount ?? bill.discountAmount ?? 0),
     taxable_amount: Number(bill.taxable_amount ?? bill.taxableAmount ?? 0),
@@ -211,9 +301,17 @@ export async function POST(req: NextRequest) {
 
     if (bills.length) {
       const normalizedBills = (bills as BackupBill[]).map((bill) => normalizeBill(userId, bill));
-      const billsUpsertRes = await supabase.from('bills').upsert(normalizedBills, {
+      let billsUpsertRes = await supabase.from('bills').upsert(normalizedBills, {
         onConflict: 'id',
       });
+
+      if (billsUpsertRes.error && isExtendedBillColumnError(billsUpsertRes.error)) {
+        billsUpsertRes = await supabase
+          .from('bills')
+          .upsert(normalizedBills.map((bill) => stripExtendedBillFields(bill)), {
+            onConflict: 'id',
+          });
+      }
 
       if (billsUpsertRes.error && billsUpsertRes.error.code !== '42P01') {
         return NextResponse.json(
